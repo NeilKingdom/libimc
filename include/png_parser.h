@@ -40,27 +40,37 @@ extern "C" {
  * zTXt     Yes             None 
  */
 
-typedef enum {
-    IHDR, /* Image header */
-    PLTE, /* Palette */
-    IDAT, /* Image data */
-    TRNS, /* Transparency */
-    GAMA, /* Image gamma */
-    CHRM, /* Primary chromaticities */
-    SRGB, /* Standard RGB color space */
-    ICCP, /* Embedded ICC profile */
-    TEXT, /* Textual data */
-    ZTXT, /* Compressed textual data */
-    ITXT, /* International textual data */
-    EHDR  /* Image trailer */
-} ChunkType;
+/* Critical chunks */
+#define IHDR "IHDR" /* Image header */
+#define PLTE "PLTE" /* Palette */
+#define IDAT "IDAT" /* Image data */
+#define IEND "IEND" /* Image trailer */
+
+/* Ancillary chunks */
+#define TRNS "tRNS" /* Transparency */
+#define GAMA "gAMA" /* Image gamma */
+#define CHRM "cHRM" /* Primary chromaticities */
+#define SRGB "sRGB" /* Standard RGB color space */
+#define ICCP "iCCP" /* Embedded ICC profile */
+
+/* Textual information */
+#define TEXT "tEXt" /* Textual data */
+#define ZTXT "zTXt" /* Compressed textual data */
+#define ITXT "iTXt" /* International textual data */
+
+/* Misc information */
+#define BKGD "bKGD" /* Background color */
+#define PHYS "pHYs" /* Physical pixel dimensions */
+#define SBIT "sBIT" /* Significant bits */
+#define SPLT "sPLT" /* Suggested palette */
+#define HIST "hIST" /* Palette histogram */
+#define TIME "tIME" /* Image last-modification time */
 
 typedef struct Chunk {
     uint32_t length;    /* Length of data segment */
     uint32_t crc;       /* Cyclic Redundancy Check */
+    uint8_t *data;      /* Chunk data (variable size) */
     char     type[4];   /* Chunk type code */
-    uint8_t *data;      /* Chunk data */
-    uint8_t  padding[2];
 } chunk_t;
 
 typedef enum {
@@ -70,15 +80,15 @@ typedef enum {
     ALPHA   = (uint8_t)4
 } ColorType;
 
-typedef struct IHDR {
-    uint32_t width;
-    uint32_t height;
-    uint8_t  bit_depth;
-    uint8_t  color_type;
-    uint8_t  compress_mthd;
-    uint8_t  filter_mthd;
-    uint8_t  interlace_mthd;
-    uint8_t  padding[3];
+typedef struct {
+    uint32_t width;             /* Image widht */
+    uint32_t height;            /* Image height */
+    uint8_t  bit_depth;         /* Pixel bit-depth */
+    uint8_t  color_type;        /* See enum ColorType */
+    uint8_t  compress_mthd;     /* Currently only 0 (LZ77) */
+    uint8_t  filter_mthd;       /* Currently onlt 0 (Adaptive filtering) */
+    uint8_t  interlace_mthd;    /* 0 = Non-interlaced, 1 = interlaced */
+    uint8_t  padding[3];        /* Padding for struct bit alignment */
 } ihdr_t;
 
 typedef struct ColorRGB {
@@ -87,23 +97,23 @@ typedef struct ColorRGB {
     uint8_t blue;
 } color_rgb_t;
 
-typedef struct PLTE {
+typedef struct {
     color_rgb_t plte_entries[256];
 } plte_t;
 
-typedef struct IDAT {
-
+typedef struct {
+    int placeholder;
 } idat_t;
 
-typedef struct TRNS {
+typedef struct {
 
 } trns_t;
 
-typedef struct GAMA {
+typedef struct {
 
 } gama_t;
 
-typedef struct CHRM {
+typedef struct {
     uint32_t wpoint_x;
     uint32_t wpoint_y;
     uint32_t red_x;
@@ -121,11 +131,11 @@ typedef enum {
     ABSOLUTE        /* Absolute colorimetric */
 } RenderIntent;
 
-typedef struct SRGB {
-    RenderIntent ri;
+typedef struct {
+    RenderIntent ri;    /* See enum RenderIntent */
 } srgb_t;
 
-typedef struct ICCP {
+typedef struct {
     char     profile_name[79];
     uint8_t  compress_mthd;
     uint8_t *comp_profile;
@@ -133,7 +143,7 @@ typedef struct ICCP {
 
 typedef struct {
     FILE    *fp;    /* The file handle */
-    uint8_t *data;  /* Raw data */
+    uint8_t *data;  /* Copy of raw data */
     size_t   size;  /* Size of data in bytes */
 } *png_hndl_t;
 

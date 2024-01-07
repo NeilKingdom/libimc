@@ -18,7 +18,7 @@ DEPS := $(wildcard $(SRC_DIR)/*.h)
 OBJS := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
 CCFLAGS += $(CCFLAGS_$(PROFILE)) -I$(INC_DIR) -Wall -Wextra -Wformat -std=c99 #-Werror
-LDFLAGS += -lc -lm -lcheck
+LDFLAGS += -lc -lm -lz -lcheck
 
 BINS := $(BIN_DIR)/libimc.a $(BIN_DIR)/libimc.so
 

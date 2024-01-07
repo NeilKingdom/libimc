@@ -23,12 +23,13 @@ typedef struct Pixel {
 #define IMC_DECL
 
 typedef enum {
-   IMC_EOK = 0, /* No error */
-   IMC_ERROR,   /* General error */
-   IMC_EINVAL,  /* The argument was invalid */
-   IMC_ENOMEM,  /* Not enough memory */
-   IMC_EFREE,   /* Error freeing memory */
-   IMC_EFAULT   /* Bad address */
+    IMC_EOK = 0, /* No error */
+    IMC_ERROR,   /* General error */
+    IMC_EINVAL,  /* The argument was invalid */
+    IMC_ENOMEM,  /* Not enough memory */
+    IMC_EFREE,   /* Error freeing memory */
+    IMC_EFAULT,  /* Bad address */
+    IMC_EOF      /* End of file */
 } IMC_Error;
 
 #if defined(__GNUC__)
