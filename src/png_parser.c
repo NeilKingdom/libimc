@@ -4,6 +4,7 @@
 #endif 
 
 #include <zlib.h>
+#include <math.h>
 #include <alloca.h>
 #include <stdbool.h>
 #include <sys/stat.h> 
@@ -34,6 +35,53 @@ static IMC_Error _imc_validate_png_hdr(png_hndl_t png) {
     fseek(png->fp, sizeof(PNG_MAGIC), SEEK_SET); /* Advance fp */
 
     return IMC_EOK;
+}
+
+/**
+ *                    +-+-+
+ * Previous scanline: |c|b|
+ *                    +-+-+
+ * Current scanline:  |a|x|
+ *                    +-+-+
+ */
+
+static uint8_t _imc_recon_none(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
+    return x;
+}
+
+static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
+    return x + curr_scanline[x - 1];
+}
+
+static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
+    return x + prev_scanline[x];
+}
+
+static uint8_t _imc_recon_avg(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
+    return x + floor((float)(curr_scanline[x - 1] + prev_scanline[x]) / 2.0f);
+}
+
+static uint8_t _imc_peath_predictor(uint8_t a, uint8_t b, uint8_t c) {
+    uint8_t p = a + b - c;
+    uint8_t pa = abs(p - a);
+    uint8_t pb = abs(p - b);
+    uint8_t pc = abs(p - c);
+    uint8_t pr = c;
+
+    if (pa <= pb && pa <= pc) {
+        pr = a; 
+    } else if (pb <= pc) {
+        pr = b;
+    }
+
+    return pr;
+}
+
+static uint8_t _imc_recon_paeth(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
+    uint8_t a = curr_scanline[x - 1];
+    uint8_t b = prev_scanline[x];
+    uint8_t c = prev_scanline[x - 1];
+    return x + _imc_peath_predictor(a, b, c);
 }
 
 static IMC_Error _imc_read_chunk(png_hndl_t png, chunk_t *chunk) {
@@ -127,7 +175,6 @@ static void _imc_chunk_to_plte(chunk_t *chunk, plte_t *plte) {
 
 static IMC_Error _imc_chunk_to_idat(png_hndl_t png, chunk_t *chunk, idat_t *idat) {
     int res;
-    FILE *fp = fopen("out.log", "w");
 
     z_stream stream;
     stream.zalloc = Z_NULL;
@@ -135,40 +182,34 @@ static IMC_Error _imc_chunk_to_idat(png_hndl_t png, chunk_t *chunk, idat_t *idat
     stream.opaque = Z_NULL;
 
     if (inflateInit(&stream) != Z_OK) {
-        IMC_WARN("Failed to initialize decompression");
+        IMC_WARN("Failed to initialize decompression stream");
         return IMC_ERROR;
     }
 
     stream.avail_in = chunk->length;
-    stream.next_in = chunk->data; 
+    stream.next_in  = chunk->data; 
 
-    size_t decomp_size = chunk->length;
-    unsigned char* decomp_buf = malloc(chunk->length);
-    if (decomp_buf == NULL) {
+    idat->length = chunk->length;
+    idat->decomp_buf = malloc(idat->length);
+    if (idat->decomp_buf == NULL) {
         IMC_WARN("Failed to allocate space for decomp_buf");
         return IMC_EFAULT;
     }
 
     do {
-        stream.avail_out = chunk->length;
-        stream.next_out = decomp_buf;
+        stream.avail_out = idat->length;
+        stream.next_out  = idat->decomp_buf;
 
         res = inflate(&stream, Z_NO_FLUSH);
 
         if (res == Z_STREAM_ERROR) {
             IMC_WARN("Decompression error");
             inflateEnd(&stream);
-            free(decomp_buf);
-            fclose(fp);
             return IMC_ERROR;
         }
-
-        fwrite(decomp_buf, chunk->length - stream.avail_out, 1, fp);
     } while (res != Z_STREAM_END);
 
     inflateEnd(&stream);
-    free(decomp_buf);
-    fclose(fp);
 
     return IMC_EOK;
 }
@@ -247,6 +288,81 @@ static IMC_Error _imc_process_next_chunk(png_hndl_t png, chunk_t *chunk) {
 }
 */
 
+static IMC_Error _imc_reconstruct_chunk_data(uint8_t *out_buf, ihdr_t *ihdr, uint8_t *decomp_buf, size_t buf_length) {
+    size_t x, scanline_len;
+    size_t decomp_off, out_off;
+    uint8_t fm, n_channels;
+    uint8_t *curr_scanline = NULL;
+    uint8_t *prev_scanline = NULL;
+    uint8_t (*func_ptr)(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x);
+
+    switch (ihdr->color_type) {
+        case COLOR: 
+            n_channels = 3;
+            break;
+        case ALPHA:
+            IMC_WARN("ALPHA not implemented yet");
+            return IMC_ERROR;
+            break;
+        case PALETTE:
+            IMC_WARN("PALETTE not implemented yet");
+            return IMC_ERROR;
+            break;
+        /* TODO: Add combos */
+    }
+
+    scanline_len = (size_t)ceil((float)(ihdr->bit_depth * n_channels * ihdr->width + 7) / 8.0f);
+    curr_scanline = malloc(scanline_len);
+    if (curr_scanline == NULL) {
+        IMC_WARN("Failed to allocate memory for current scanline");
+        return IMC_EFAULT;
+    }
+    prev_scanline = malloc(scanline_len);
+    if (prev_scanline == NULL) {
+        IMC_WARN("Failed to allocate memory for previous scanline");
+        return IMC_EFAULT;
+    }
+    memset((void*)prev_scanline, 0, scanline_len);
+
+    for (decomp_off = 0, out_off = 0; decomp_off < buf_length; decomp_off += scanline_len) {
+        /* Filter method */
+        fm = decomp_buf[decomp_off++];
+        assert(fm <= 4);
+
+        switch (fm) {
+            case NONE: 
+                func_ptr = _imc_recon_none;
+                break;                
+            case SUB:
+                func_ptr = _imc_recon_sub;
+                break;
+            case UP:
+                func_ptr = _imc_recon_up;
+                break;
+            case AVG: 
+                func_ptr = _imc_recon_avg;
+                break;
+            case PAETH: 
+                func_ptr = _imc_recon_paeth;
+                break;
+        }
+
+        memcpy((void*)curr_scanline, (void*)(decomp_buf + decomp_off), scanline_len);
+
+        for (x = decomp_off; x < (decomp_off + scanline_len); ++x) {
+            /* TODO: Boundary checking */
+            out_buf[out_off++] = func_ptr(prev_scanline, curr_scanline, curr_scanline[x]);
+        }
+
+        memcpy((void*)prev_scanline, (void*)curr_scanline, scanline_len);
+    }
+
+    free(curr_scanline);
+    free(prev_scanline);
+
+    return IMC_EOK;
+}
+
 png_hndl_t imc_open_png(const char *path) {
     png_hndl_t png = NULL;
     FILE *fp = NULL;
@@ -286,6 +402,7 @@ IMC_Error imc_parse_png(png_hndl_t png) {
     chunk_t chunk = { 0 }; 
     ihdr_t  ihdr  = { 0 };
     idat_t  idat  = { 0 };
+    uint8_t *out_buf = NULL;
 
     status = _imc_read_chunk(png, &chunk);
     if (status != IMC_EOK) {
@@ -306,11 +423,19 @@ IMC_Error imc_parse_png(png_hndl_t png) {
             break;
         }*/
         _imc_chunk_to_idat(png, &chunk, &idat);
+        out_buf = malloc(idat.length);
+        _imc_reconstruct_chunk_data(out_buf, &ihdr, idat.decomp_buf, idat.length);
         if (_imc_destroy_chunk_data(&chunk) != IMC_EOK) {
             break;
         }
         break;
     }
+
+    FILE *fp = fopen("out.log", "w");
+    fwrite(out_buf, idat.length, 1, fp);
+    fclose(fp);
+    free(idat.decomp_buf);
+    free(out_buf);
 
     return IMC_EOK;
 }

@@ -5,8 +5,9 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif /* __cplusplus */
 
+#define NONE 0
 #define PNG_MAGIC ((uint8_t[8]){ 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })
 
 /**
@@ -74,10 +75,9 @@ typedef struct Chunk {
 } chunk_t;
 
 typedef enum {
-    NONE    = (uint8_t)0,
-    PALETTE = (uint8_t)1,
-    COLOR   = (uint8_t)2, 
-    ALPHA   = (uint8_t)4
+    PALETTE = 1,
+    COLOR   = 2, 
+    ALPHA   = 4
 } ColorType;
 
 typedef struct {
@@ -102,7 +102,8 @@ typedef struct {
 } plte_t;
 
 typedef struct {
-    int placeholder;
+    uint8_t *decomp_buf;    /* Buffer for decompressed data */
+    size_t   length;        /* Length of buffer */
 } idat_t;
 
 typedef struct {
@@ -114,14 +115,14 @@ typedef struct {
 } gama_t;
 
 typedef struct {
-    uint32_t wpoint_x;
-    uint32_t wpoint_y;
-    uint32_t red_x;
-    uint32_t red_y;
-    uint32_t green_x;
-    uint32_t green_y;
-    uint32_t blue_x;
-    uint32_t blue_y;
+    uint32_t wpoint_x;  /* White-point x */
+    uint32_t wpoint_y;  /* White-point y */
+    uint32_t red_x;     /* Red x */
+    uint32_t red_y;     /* Red y */
+    uint32_t green_x;   /* Green x */
+    uint32_t green_y;   /* Green y */
+    uint32_t blue_x;    /* Blue x */
+    uint32_t blue_y;    /* Blue y */
 } chrm_t;
 
 typedef enum {
@@ -141,11 +142,20 @@ typedef struct {
     uint8_t *comp_profile;
 } iccp_t;
 
+typedef enum {
+    SUB = 1,   
+    UP,     
+    AVG,    
+    PAETH
+} FilterMethod;
+
 typedef struct {
     FILE    *fp;    /* The file handle */
     uint8_t *data;  /* Copy of raw data */
     size_t   size;  /* Size of data in bytes */
 } *png_hndl_t;
+
+/* Forward function decls */
 
 png_hndl_t  imc_open_png(const char *path);
 IMC_Error   imc_close_png(png_hndl_t png);
@@ -154,6 +164,6 @@ IMC_Error   imc_destroy_png(png_hndl_t png);
 
 #ifdef __cplusplus
 }
-#endif
+#endif /* __cplusplus */
 
 #endif /* PNG_PARSER_H */
