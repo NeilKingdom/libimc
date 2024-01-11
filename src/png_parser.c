@@ -1,12 +1,11 @@
 /* Required for fileno() */
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
+#include <stdio.h>
 #endif 
 
 #include <zlib.h>
-#include <math.h>
 #include <alloca.h>
-#include <stdbool.h>
 #include <sys/stat.h> 
 #include "../include/png_parser.h"
 
@@ -430,7 +429,6 @@ static void _output_raster(uint8_t *pixbuf, size_t length) {
     fputs("P6\n", fp);
     fputs("4000 4000\n", fp);
     fputs("255\n", fp);
-    fputc('\n', fp);
      
     for (y = 0; y < 4000; ++y) {
         for (x = 0; x < 4000; ++x) {
@@ -440,14 +438,7 @@ static void _output_raster(uint8_t *pixbuf, size_t length) {
                 pixbuf[(y * 4000 * sizeof(rgb_t)) + x * sizeof(rgb_t) + 2]
             };
 
-            fputc(pixel.r, fp);
-            fputc(' ', fp);
-
-            fputc(pixel.g, fp);
-            fputc(' ', fp);
-
-            fputc(pixel.b, fp);
-            fputc(' ', fp);
+            fprintf(fp, "%d %d %d ", pixel.r, pixel.g, pixel.b);
         }
         fputc('\n', fp);
     }
@@ -467,7 +458,7 @@ png_hndl_t imc_open_png(const char *path) {
     }
 
     /* Open PNG file */
-    fp = fopen(path, "rw");
+    fp = fopen(path, "r+");
     if (!fp) {
         IMC_WARN("Failed to open file");
         return NULL;
