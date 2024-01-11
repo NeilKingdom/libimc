@@ -45,20 +45,33 @@ static IMC_Error _imc_validate_png_hdr(png_hndl_t png) {
  *                    +-+-+
  */
 
-static uint8_t _imc_recon_none(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
-    return x;
+static uint8_t _imc_recon_none(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+    return curr_scanline[idx];
 }
 
-static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
-    return x + curr_scanline[x - 1];
+static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+    uint8_t x = curr_scanline[idx];
+    uint8_t a = (is_first) ? 0 : curr_scanline[idx - 3]; /* TODO: change 3 to bpp */
+    uint8_t res = (x + a) % 256;
+    curr_scanline[idx] = res;
+    return res;
 }
 
-static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
-    return x + prev_scanline[x];
+static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+    uint8_t x = curr_scanline[idx];
+    uint8_t b = prev_scanline[idx];
+    uint8_t res = (x + b) % 256;
+    curr_scanline[idx] = res;
+    return res;
 }
 
-static uint8_t _imc_recon_avg(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
-    return x + floor((float)(curr_scanline[x - 1] + prev_scanline[x]) / 2.0f);
+static uint8_t _imc_recon_avg(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+    uint8_t x = curr_scanline[idx];
+    uint8_t a = (is_first) ? 0 : curr_scanline[idx - 3];
+    uint8_t b = prev_scanline[idx];
+    uint8_t res = (x + (int)floor((float)(a + b) / 2.0f)) % 256;
+    curr_scanline[idx] = res;
+    return res;
 }
 
 static uint8_t _imc_peath_predictor(uint8_t a, uint8_t b, uint8_t c) {
@@ -77,11 +90,14 @@ static uint8_t _imc_peath_predictor(uint8_t a, uint8_t b, uint8_t c) {
     return pr;
 }
 
-static uint8_t _imc_recon_paeth(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x) {
-    uint8_t a = curr_scanline[x - 1];
-    uint8_t b = prev_scanline[x];
-    uint8_t c = prev_scanline[x - 1];
-    return x + _imc_peath_predictor(a, b, c);
+static uint8_t _imc_recon_paeth(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+    uint8_t x = curr_scanline[idx];
+    uint8_t a = (is_first) ? 0 : curr_scanline[idx - 3];
+    uint8_t b = prev_scanline[idx];
+    uint8_t c = (is_first) ? 0 : prev_scanline[idx - 3];
+    uint8_t res = (x + _imc_peath_predictor(a, b, c)) % 256;
+    curr_scanline[idx] = res;
+    return res;
 }
 
 static IMC_Error _imc_read_chunk(png_hndl_t png, chunk_t *chunk) {
@@ -106,6 +122,7 @@ static IMC_Error _imc_read_chunk(png_hndl_t png, chunk_t *chunk) {
 
     /* Chunk CRC */
     fread((void*)&chunk->crc, sizeof(chunk->crc), 1, png->fp);
+    _IMC_FLIP_ENDIAN(&chunk->crc);
 
     return IMC_EOK;
 }
@@ -132,14 +149,16 @@ static void _imc_chunk_to_ihdr(chunk_t *chunk, ihdr_t *ihdr) {
     _IMC_FLIP_ENDIAN(&ihdr->bit_depth);
     _IMC_FLIP_ENDIAN(&ihdr->color_type);
     _IMC_FLIP_ENDIAN(&ihdr->compress_mthd);
+    assert(ihdr->compress_mthd == 0); /* PNG currently supports type 0 only */
     _IMC_FLIP_ENDIAN(&ihdr->filter_mthd);
+    assert(ihdr->filter_mthd == 0); /* PNG currently supports filter method 0 only */
     _IMC_FLIP_ENDIAN(&ihdr->interlace_mthd);
 }
 
 static void _imc_print_ihdr_info(ihdr_t ihdr) {
     printf("Image width: %d\n", ihdr.width);
     printf("Image height: %d\n", ihdr.height);
-    printf("Pixel bit-depth: %d\n", ihdr.bit_depth);
+    printf("Bits per-pixel: %d\n", ihdr.bit_depth);
     printf("Color type: ");
     switch (ihdr.color_type) {
         case NONE: 
@@ -161,57 +180,92 @@ static void _imc_print_ihdr_info(ihdr_t ihdr) {
             printf("Invalid\n");
             break;
     }
-    printf("file compression method: %d\n", ihdr.compress_mthd);
-    printf("file filter method: %d\n", ihdr.filter_mthd);
-    printf(
-        "file interlace method: %s\n", 
-        (ihdr.interlace_mthd == 0) ? "Non-interlaced" : "Interlaced"
-    );
+    printf("Compression method: Deflate\n");
+    printf("Filter method: 0\n");
+    printf("Interlaced: %s\n", (ihdr.interlace_mthd == 0) ? "False" : "True");
 }
 
 static void _imc_chunk_to_plte(chunk_t *chunk, plte_t *plte) {
 
 }
 
-static IMC_Error _imc_chunk_to_idat(png_hndl_t png, chunk_t *chunk, idat_t *idat) {
+static IMC_Error _imc_chunk_to_idat(ihdr_t *ihdr, chunk_t *chunk, idat_t *idat) {
     int res;
-
     z_stream stream;
-    stream.zalloc = Z_NULL;
-    stream.zfree  = Z_NULL;
-    stream.opaque = Z_NULL;
+    uint8_t n_channels;
+    size_t scanline_len, decomp_len;
 
-    if (inflateInit(&stream) != Z_OK) {
-        IMC_WARN("Failed to initialize decompression stream");
-        return IMC_ERROR;
+    switch (ihdr->color_type) {
+        case COLOR: 
+            n_channels = 3;
+            break;
+        case ALPHA:
+            IMC_WARN("ALPHA not implemented yet");
+            return IMC_ERROR;
+            break;
+        case PALETTE:
+            IMC_WARN("PALETTE not implemented yet");
+            return IMC_ERROR;
+            break;
+        /* TODO: Add combos */
     }
 
-    stream.avail_in = chunk->length;
-    stream.next_in  = chunk->data; 
+    scanline_len = (size_t)(n_channels * ihdr->width) + 1; /* +1 for filter type */
+    decomp_len = ihdr->height * scanline_len;
+    idat->length = decomp_len;
 
-    idat->length = chunk->length;
+    assert((chunk->data[0] & 0x0F) == 0x08); /* Compression type 8 = deflate */
+
     idat->decomp_buf = malloc(idat->length);
     if (idat->decomp_buf == NULL) {
         IMC_WARN("Failed to allocate space for decomp_buf");
         return IMC_EFAULT;
     }
 
+    stream.zalloc = Z_NULL;
+    stream.zfree  = Z_NULL;
+    stream.opaque = Z_NULL;
+    stream.avail_in = 0;
+    stream.next_in  = Z_NULL;
+
+    res = inflateInit(&stream);
+    if (res != Z_OK) {
+        IMC_WARN("Failed to initialize decompression stream");
+        free(idat->decomp_buf);
+        idat->decomp_buf = NULL;
+        return IMC_ERROR;
+    }
+
+    stream.avail_in = chunk->length;
+
     do {
-        stream.avail_out = idat->length;
-        stream.next_out  = idat->decomp_buf;
+        if (stream.avail_in == 0) break;
+        stream.next_in = chunk->data;
 
-        res = inflate(&stream, Z_NO_FLUSH);
+        do {
+            stream.avail_out = idat->length;
+            stream.next_out  = idat->decomp_buf;
 
-        if (res == Z_STREAM_ERROR) {
-            IMC_WARN("Decompression error");
-            inflateEnd(&stream);
-            return IMC_ERROR;
-        }
+            res = inflate(&stream, Z_NO_FLUSH);
+            switch (res) {
+                case Z_NEED_DICT:
+                case Z_DATA_ERROR:
+                case Z_MEM_ERROR:
+                case Z_STREAM_ERROR:
+                {
+                    IMC_WARN("Decompression error");
+                    (void)inflateEnd(&stream);
+                    free(idat->decomp_buf);
+                    idat->decomp_buf = NULL;
+                    return res;
+                }
+            }
+        } while (stream.avail_out == 0);
     } while (res != Z_STREAM_END);
 
-    inflateEnd(&stream);
-
-    return IMC_EOK;
+    /* Cleanup */
+    (void)inflateEnd(&stream);
+    return (res == Z_STREAM_END) ? IMC_EOK : IMC_ERROR;
 }
 
 static void _imc_chunk_to_chrm(chunk_t *chunk, chrm_t *chrm) {
@@ -288,13 +342,20 @@ static IMC_Error _imc_process_next_chunk(png_hndl_t png, chunk_t *chunk) {
 }
 */
 
-static IMC_Error _imc_reconstruct_chunk_data(uint8_t *out_buf, ihdr_t *ihdr, uint8_t *decomp_buf, size_t buf_length) {
+static uint8_t *_imc_reconstruct_chunk_data(ihdr_t *ihdr, uint8_t *decomp_buf, size_t decomp_len) {
     size_t x, scanline_len;
     size_t decomp_off, out_off;
     uint8_t fm, n_channels;
     uint8_t *curr_scanline = NULL;
     uint8_t *prev_scanline = NULL;
-    uint8_t (*func_ptr)(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t x);
+    uint8_t (*recon_func)(uint8_t *, uint8_t *, uint8_t, bool);
+    uint8_t *out_buf = NULL;
+
+    out_buf = malloc(decomp_len);
+    if (out_buf == NULL) {
+        IMC_WARN("Failed to allocate memory for output buffer");
+        return NULL;
+    }
 
     switch (ihdr->color_type) {
         case COLOR: 
@@ -302,56 +363,56 @@ static IMC_Error _imc_reconstruct_chunk_data(uint8_t *out_buf, ihdr_t *ihdr, uin
             break;
         case ALPHA:
             IMC_WARN("ALPHA not implemented yet");
-            return IMC_ERROR;
+            return NULL;
             break;
         case PALETTE:
             IMC_WARN("PALETTE not implemented yet");
-            return IMC_ERROR;
+            return NULL;
             break;
         /* TODO: Add combos */
     }
 
-    scanline_len = (size_t)ceil((float)(ihdr->bit_depth * n_channels * ihdr->width + 7) / 8.0f);
+    scanline_len = n_channels * ihdr->width;
     curr_scanline = malloc(scanline_len);
     if (curr_scanline == NULL) {
         IMC_WARN("Failed to allocate memory for current scanline");
-        return IMC_EFAULT;
+        return NULL;
     }
     prev_scanline = malloc(scanline_len);
     if (prev_scanline == NULL) {
         IMC_WARN("Failed to allocate memory for previous scanline");
-        return IMC_EFAULT;
+        return NULL;
     }
     memset((void*)prev_scanline, 0, scanline_len);
 
-    for (decomp_off = 0, out_off = 0; decomp_off < buf_length; decomp_off += scanline_len) {
+    for (decomp_off = 0, out_off = 0; decomp_off < decomp_len; decomp_off += scanline_len) {
         /* Filter method */
         fm = decomp_buf[decomp_off++];
         assert(fm <= 4);
 
         switch (fm) {
             case NONE: 
-                func_ptr = _imc_recon_none;
+                recon_func = _imc_recon_none;
                 break;                
             case SUB:
-                func_ptr = _imc_recon_sub;
+                recon_func = _imc_recon_sub;
                 break;
             case UP:
-                func_ptr = _imc_recon_up;
+                recon_func = _imc_recon_up;
                 break;
             case AVG: 
-                func_ptr = _imc_recon_avg;
+                recon_func = _imc_recon_avg;
                 break;
             case PAETH: 
-                func_ptr = _imc_recon_paeth;
+                recon_func = _imc_recon_paeth;
                 break;
         }
 
         memcpy((void*)curr_scanline, (void*)(decomp_buf + decomp_off), scanline_len);
 
-        for (x = decomp_off; x < (decomp_off + scanline_len); ++x) {
-            /* TODO: Boundary checking */
-            out_buf[out_off++] = func_ptr(prev_scanline, curr_scanline, curr_scanline[x]);
+        for (x = 0; x < scanline_len; ++x) {
+            bool is_first = (x < n_channels);
+            out_buf[out_off++] = recon_func(prev_scanline, curr_scanline, x, is_first);
         }
 
         memcpy((void*)prev_scanline, (void*)curr_scanline, scanline_len);
@@ -360,7 +421,38 @@ static IMC_Error _imc_reconstruct_chunk_data(uint8_t *out_buf, ihdr_t *ihdr, uin
     free(curr_scanline);
     free(prev_scanline);
 
-    return IMC_EOK;
+    return out_buf;
+}
+
+static void _output_raster(uint8_t *pixbuf, size_t length) {
+    size_t x, y;
+    FILE *fp = fopen("output.ppm", "w"); 
+    fputs("P6\n", fp);
+    fputs("4000 4000\n", fp);
+    fputs("255\n", fp);
+    fputc('\n', fp);
+     
+    for (y = 0; y < 4000; ++y) {
+        for (x = 0; x < 4000; ++x) {
+            rgb_t pixel = {
+                pixbuf[(y * 4000 * sizeof(rgb_t)) + x * sizeof(rgb_t)],
+                pixbuf[(y * 4000 * sizeof(rgb_t)) + x * sizeof(rgb_t) + 1],
+                pixbuf[(y * 4000 * sizeof(rgb_t)) + x * sizeof(rgb_t) + 2]
+            };
+
+            fputc(pixel.r, fp);
+            fputc(' ', fp);
+
+            fputc(pixel.g, fp);
+            fputc(' ', fp);
+
+            fputc(pixel.b, fp);
+            fputc(' ', fp);
+        }
+        fputc('\n', fp);
+    }
+
+    fclose(fp);
 }
 
 png_hndl_t imc_open_png(const char *path) {
@@ -422,18 +514,33 @@ IMC_Error imc_parse_png(png_hndl_t png) {
         /*if (_imc_proccess_next_chunk(png, &chunk) != IMC_EOK) {
             break;
         }*/
-        _imc_chunk_to_idat(png, &chunk, &idat);
-        out_buf = malloc(idat.length);
-        _imc_reconstruct_chunk_data(out_buf, &ihdr, idat.decomp_buf, idat.length);
+        _imc_chunk_to_idat(&ihdr, &chunk, &idat);
+        FILE *fp = fopen("out.log", "w");
+        fwrite(idat.decomp_buf, idat.length, 1, fp);
+        fclose(fp);
+
+        out_buf = _imc_reconstruct_chunk_data(&ihdr, idat.decomp_buf, idat.length);
         if (_imc_destroy_chunk_data(&chunk) != IMC_EOK) {
             break;
         }
         break;
     }
 
-    FILE *fp = fopen("out.log", "w");
-    fwrite(out_buf, idat.length, 1, fp);
-    fclose(fp);
+    char iend_buf[4];
+    char print_buf[5];
+    /* There are 4 0 bytes after CRC for some reason */
+    getc(png->fp);
+    getc(png->fp);
+    getc(png->fp);
+    getc(png->fp);
+    fread(iend_buf, sizeof(iend_buf), 1, png->fp);
+    strncpy(print_buf, iend_buf, sizeof(iend_buf));
+    print_buf[4] = '\0';
+    printf("last 4 bytes: %s\n", print_buf);
+    assert(memcmp(iend_buf, IEND, sizeof(iend_buf)) == 0);
+
+    _output_raster(out_buf, idat.length);
+
     free(idat.decomp_buf);
     free(out_buf);
 

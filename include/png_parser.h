@@ -8,7 +8,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #define NONE 0
-#define PNG_MAGIC ((uint8_t[8]){ 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })
+#define PNG_MAGIC ((uint8_t[8]){ 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A })
 
 /**
  * =========================================================

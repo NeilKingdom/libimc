@@ -12,12 +12,18 @@
 extern "C" {
 #endif /* __cplusplus */
 
-typedef struct Pixel {
-    float a;
-    float r;
-    float g;
-    float b;
-} pixel_t;
+typedef struct {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} rgb_t;
+
+typedef struct {
+    uint8_t a;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} rgba_t;
 
 /* Change to static to make all functions static */
 #define IMC_DECL
