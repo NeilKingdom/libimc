@@ -1,9 +1,9 @@
 /* Required for fileno() */
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
-#include <stdio.h>
 #endif 
 
+#include <math.h>
 #include <zlib.h>
 #include <alloca.h>
 #include <sys/stat.h> 
@@ -49,36 +49,36 @@ static uint8_t _imc_recon_none(uint8_t *prev_scanline, uint8_t *curr_scanline, u
 }
 
 static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
-    uint8_t x = curr_scanline[idx];
-    uint8_t a = (is_first) ? 0 : curr_scanline[idx - 3]; /* TODO: change 3 to bpp */
+    uint32_t x = curr_scanline[idx];
+    uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3]; /* TODO: change 3 to bpp */
     uint8_t res = (x + a) % 256;
     curr_scanline[idx] = res;
     return res;
 }
 
 static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
-    uint8_t x = curr_scanline[idx];
-    uint8_t b = prev_scanline[idx];
+    uint32_t x = curr_scanline[idx];
+    uint32_t b = prev_scanline[idx];
     uint8_t res = (x + b) % 256;
     curr_scanline[idx] = res;
     return res;
 }
 
 static uint8_t _imc_recon_avg(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
-    uint8_t x = curr_scanline[idx];
-    uint8_t a = (is_first) ? 0 : curr_scanline[idx - 3];
-    uint8_t b = prev_scanline[idx];
-    uint8_t res = (x + (int)floor((float)(a + b) / 2.0f)) % 256;
+    uint32_t x = curr_scanline[idx];
+    uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3];
+    uint32_t b = prev_scanline[idx];
+    uint8_t res = (x + (int)floorf(((float)a + (float)b) / 2.0f)) % 256;
     curr_scanline[idx] = res;
     return res;
 }
 
-static uint8_t _imc_peath_predictor(uint8_t a, uint8_t b, uint8_t c) {
-    uint8_t p = a + b - c;
-    uint8_t pa = abs(p - a);
-    uint8_t pb = abs(p - b);
-    uint8_t pc = abs(p - c);
-    uint8_t pr = c;
+static uint32_t _imc_peath_predictor(uint8_t a, uint8_t b, uint8_t c) {
+    int32_t p = a + b - c;
+    int32_t pa = abs(p - a);
+    int32_t pb = abs(p - b);
+    int32_t pc = abs(p - c);
+    int32_t pr = c;
 
     if (pa <= pb && pa <= pc) {
         pr = a; 
@@ -86,14 +86,14 @@ static uint8_t _imc_peath_predictor(uint8_t a, uint8_t b, uint8_t c) {
         pr = b;
     }
 
-    return pr;
+    return (uint32_t)pr;
 }
 
 static uint8_t _imc_recon_paeth(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
-    uint8_t x = curr_scanline[idx];
-    uint8_t a = (is_first) ? 0 : curr_scanline[idx - 3];
-    uint8_t b = prev_scanline[idx];
-    uint8_t c = (is_first) ? 0 : prev_scanline[idx - 3];
+    uint32_t x = curr_scanline[idx];
+    uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3];
+    uint32_t b = prev_scanline[idx];
+    uint32_t c = (is_first) ? 0 : prev_scanline[idx - 3];
     uint8_t res = (x + _imc_peath_predictor(a, b, c)) % 256;
     curr_scanline[idx] = res;
     return res;
@@ -424,23 +424,31 @@ static uint8_t *_imc_reconstruct_chunk_data(ihdr_t *ihdr, uint8_t *decomp_buf, s
 }
 
 static void _output_raster(uint8_t *pixbuf, size_t length) {
-    size_t x, y;
+    size_t x, y, p;
+    int stride = 4000, count = 0;
     FILE *fp = fopen("output.ppm", "w"); 
-    fputs("P6\n", fp);
+    fputs("P3\n", fp);
     fputs("4000 4000\n", fp);
     fputs("255\n", fp);
+    fputc('\n', fp);
+
+    p = sizeof(rgb_t);
      
-    for (y = 0; y < 4000; ++y) {
-        for (x = 0; x < 4000; ++x) {
+    for (y = 0; y < stride; ++y) {
+        for (x = 0; x < (stride * p); x += p) {
             rgb_t pixel = {
-                pixbuf[(y * 4000 * sizeof(rgb_t)) + x * sizeof(rgb_t)],
-                pixbuf[(y * 4000 * sizeof(rgb_t)) + x * sizeof(rgb_t) + 1],
-                pixbuf[(y * 4000 * sizeof(rgb_t)) + x * sizeof(rgb_t) + 2]
+                pixbuf[(y * p * stride) + x],
+                pixbuf[(y * p * stride) + x + 1],
+                pixbuf[(y * p * stride) + x + 2]
             };
 
             fprintf(fp, "%d %d %d ", pixel.r, pixel.g, pixel.b);
+
+            if (count++ == 5) {
+                fputc('\n', fp);
+                count = 0;
+            }
         }
-        fputc('\n', fp);
     }
 
     fclose(fp);
