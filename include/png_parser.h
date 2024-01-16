@@ -2,6 +2,7 @@
 #define PNG_PARSER_H
 
 #include "common.h"
+#include "pixmap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,7 +68,7 @@ extern "C" {
 #define HIST "hIST" /* Palette histogram */
 #define TIME "tIME" /* Image last-modification time */
 
-typedef struct Chunk {
+typedef struct {
     uint32_t length;    /* Length of data segment */
     uint32_t crc;       /* Cyclic Redundancy Check */
     uint8_t *data;      /* Chunk data (variable size) */
@@ -91,7 +92,7 @@ typedef struct {
     uint8_t  padding[3];        /* Padding for struct bit alignment */
 } ihdr_t;
 
-typedef struct ColorRGB {
+typedef struct {
     uint8_t red;
     uint8_t green;
     uint8_t blue;
@@ -154,6 +155,9 @@ typedef struct {
     uint8_t *data;  /* Copy of raw data */
     size_t   size;  /* Size of data in bytes */
 } *png_hndl_t;
+
+/* Used for reconstructing filtered scanlines */
+typedef uint8_t (*recon_func)(uint8_t *, uint8_t *, const size_t, const bool);
 
 /* Forward function decls */
 
