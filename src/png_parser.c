@@ -44,11 +44,11 @@ static IMC_Error _imc_validate_png_hdr(png_hndl_t png) {
  *                    +-+-+
  */
 
-static uint8_t _imc_recon_none(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+static uint8_t _imc_recon_none(uint8_t *prev_scanline, uint8_t *curr_scanline, size_t idx, bool is_first) {
     return curr_scanline[idx];
 }
 
-static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, size_t idx, bool is_first) {
     uint32_t x = curr_scanline[idx];
     uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3]; /* TODO: change 3 to bpp */
     uint8_t res = (x + a) % 256;
@@ -56,7 +56,7 @@ static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, ui
     return res;
 }
 
-static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, size_t idx, bool is_first) {
     uint32_t x = curr_scanline[idx];
     uint32_t b = prev_scanline[idx];
     uint8_t res = (x + b) % 256;
@@ -64,7 +64,7 @@ static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, uin
     return res;
 }
 
-static uint8_t _imc_recon_avg(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+static uint8_t _imc_recon_avg(uint8_t *prev_scanline, uint8_t *curr_scanline, size_t idx, bool is_first) {
     uint32_t x = curr_scanline[idx];
     uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3];
     uint32_t b = prev_scanline[idx];
@@ -89,7 +89,7 @@ static uint32_t _imc_peath_predictor(uint8_t a, uint8_t b, uint8_t c) {
     return (uint32_t)pr;
 }
 
-static uint8_t _imc_recon_paeth(uint8_t *prev_scanline, uint8_t *curr_scanline, uint8_t idx, bool is_first) {
+static uint8_t _imc_recon_paeth(uint8_t *prev_scanline, uint8_t *curr_scanline, size_t idx, bool is_first) {
     uint32_t x = curr_scanline[idx];
     uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3];
     uint32_t b = prev_scanline[idx];
@@ -209,8 +209,8 @@ static IMC_Error _imc_chunk_to_idat(ihdr_t *ihdr, chunk_t *chunk, idat_t *idat) 
         /* TODO: Add combos */
     }
 
-    scanline_len = (size_t)(n_channels * ihdr->width) + 1; /* +1 for filter type */
-    decomp_len = ihdr->height * scanline_len;
+    scanline_len = ((n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3) + 1; /* +1 for filter type */
+    decomp_len = scanline_len * ihdr->height;
     idat->length = decomp_len;
 
     assert((chunk->data[0] & 0x0F) == 0x08); /* Compression type 8 = deflate */
@@ -347,8 +347,8 @@ static uint8_t *_imc_reconstruct_chunk_data(ihdr_t *ihdr, uint8_t *decomp_buf, s
     uint8_t fm, n_channels;
     uint8_t *curr_scanline = NULL;
     uint8_t *prev_scanline = NULL;
-    uint8_t (*recon_func)(uint8_t *, uint8_t *, uint8_t, bool);
     uint8_t *out_buf = NULL;
+    uint8_t (*recon_func)(uint8_t *, uint8_t *, size_t, bool);
 
     out_buf = malloc(decomp_len);
     if (out_buf == NULL) {
@@ -371,17 +371,8 @@ static uint8_t *_imc_reconstruct_chunk_data(ihdr_t *ihdr, uint8_t *decomp_buf, s
         /* TODO: Add combos */
     }
 
-    scanline_len = n_channels * ihdr->width;
-    curr_scanline = malloc(scanline_len);
-    if (curr_scanline == NULL) {
-        IMC_WARN("Failed to allocate memory for current scanline");
-        return NULL;
-    }
-    prev_scanline = malloc(scanline_len);
-    if (prev_scanline == NULL) {
-        IMC_WARN("Failed to allocate memory for previous scanline");
-        return NULL;
-    }
+    scanline_len = (n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3;
+    prev_scanline = alloca(scanline_len);
     memset((void*)prev_scanline, 0, scanline_len);
 
     for (decomp_off = 0, out_off = 0; decomp_off < decomp_len; decomp_off += scanline_len) {
@@ -407,47 +398,39 @@ static uint8_t *_imc_reconstruct_chunk_data(ihdr_t *ihdr, uint8_t *decomp_buf, s
                 break;
         }
 
-        memcpy((void*)curr_scanline, (void*)(decomp_buf + decomp_off), scanline_len);
+        curr_scanline = decomp_buf + decomp_off;
 
         for (x = 0; x < scanline_len; ++x) {
             bool is_first = (x < n_channels);
             out_buf[out_off++] = recon_func(prev_scanline, curr_scanline, x, is_first);
         }
 
-        memcpy((void*)prev_scanline, (void*)curr_scanline, scanline_len);
+        prev_scanline = curr_scanline;
     }
-
-    free(curr_scanline);
-    free(prev_scanline);
 
     return out_buf;
 }
 
-static void _output_raster(uint8_t *pixbuf, size_t length) {
+static void _output_raster(uint8_t *pixbuf, size_t width, size_t height) {
     size_t x, y, p;
-    int stride = 4000, count = 0;
-    FILE *fp = fopen("output.ppm", "w"); 
-    fputs("P3\n", fp);
-    fputs("4000 4000\n", fp);
+    FILE *fp = fopen("output.ppm", "wb"); 
+    fputs("P6\n", fp);
+    fprintf(fp, "%ld %ld\n", width, height);
     fputs("255\n", fp);
-    fputc('\n', fp);
 
     p = sizeof(rgb_t);
      
-    for (y = 0; y < stride; ++y) {
-        for (x = 0; x < (stride * p); x += p) {
+    for (y = 0; y < height; ++y) {
+        for (x = 0; x < (width * p); x += p) {
             rgb_t pixel = {
-                pixbuf[(y * p * stride) + x],
-                pixbuf[(y * p * stride) + x + 1],
-                pixbuf[(y * p * stride) + x + 2]
+                pixbuf[(y * p * width) + x],
+                pixbuf[(y * p * width) + x + 1],
+                pixbuf[(y * p * width) + x + 2]
             };
 
-            fprintf(fp, "%d %d %d ", pixel.r, pixel.g, pixel.b);
-
-            if (count++ == 5) {
-                fputc('\n', fp);
-                count = 0;
-            }
+            fputc(pixel.r, fp);
+            fputc(pixel.g, fp);
+            fputc(pixel.b, fp);
         }
     }
 
@@ -458,14 +441,12 @@ png_hndl_t imc_open_png(const char *path) {
     png_hndl_t png = NULL;
     FILE *fp = NULL;
 
-    /* Allocate PNG handle */
     png = malloc(sizeof(png_hndl_t));
     if (!png) {
         IMC_WARN("Failed to allocate memory for png");
         return NULL;
     }
 
-    /* Open PNG file */
     fp = fopen(path, "r+");
     if (!fp) {
         IMC_WARN("Failed to open file");
@@ -501,7 +482,7 @@ IMC_Error imc_parse_png(png_hndl_t png) {
     }
 
     _imc_chunk_to_ihdr(&chunk, &ihdr);
-#ifdef DEBUG
+#if 0
     _imc_print_ihdr_info(ihdr);
 #endif
     _imc_destroy_chunk_data(&chunk);
@@ -514,9 +495,6 @@ IMC_Error imc_parse_png(png_hndl_t png) {
             break;
         }*/
         _imc_chunk_to_idat(&ihdr, &chunk, &idat);
-        FILE *fp = fopen("out.log", "w");
-        fwrite(idat.decomp_buf, idat.length, 1, fp);
-        fclose(fp);
 
         out_buf = _imc_reconstruct_chunk_data(&ihdr, idat.decomp_buf, idat.length);
         if (_imc_destroy_chunk_data(&chunk) != IMC_EOK) {
@@ -538,7 +516,7 @@ IMC_Error imc_parse_png(png_hndl_t png) {
     printf("last 4 bytes: %s\n", print_buf);
     assert(memcmp(iend_buf, IEND, sizeof(iend_buf)) == 0);
 
-    _output_raster(out_buf, idat.length);
+    _output_raster(out_buf, ihdr.width, ihdr.height);
 
     free(idat.decomp_buf);
     free(out_buf);
