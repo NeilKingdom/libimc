@@ -295,6 +295,19 @@ static void _imc_print_ihdr_info(const ihdr_t ihdr) {
     printf("Interlaced: %s\n", (ihdr.interlace_mthd == 0) ? "False" : "True");
 }
 
+static IMC_Error _imc_append_idat(const chunk_t * restrict chunk, idat_t * restrict idat) {
+    idat->length += chunk->length;
+    idat->data = realloc(idat->data, idat->length);
+    if (idat->data == NULL) {
+        IMC_WARN("Failed to allocate memory for IDAT compression data");
+        return IMC_EFAULT;
+    }
+    memcpy((void*)(idat->data + idat->offset - 1), (void*)chunk->data, chunk->length);
+    idat->offset += chunk->length;
+
+    return IMC_EOK;
+}
+
 /**
  * @brief Converts raw chunk data to an idat_t struct using zlib's decompression algorithm
  * @param[in] ihdr The IHDR information pertaining to the PNG
@@ -302,15 +315,18 @@ static void _imc_print_ihdr_info(const ihdr_t ihdr) {
  * @param[out] idat The struct to which the decompressed IDAT data will be copied
  * @returns IMC_EFAULT if an allocation fails or IMC_ERROR for zlib errors, otherwise returns IMC_EOK
  */
-static IMC_Error _imc_chunk_to_idat(
+static IMC_Error _imc_decompress_idat(
     const ihdr_t * restrict ihdr, 
-    const chunk_t * restrict chunk, 
-    idat_t * restrict idat
+    const idat_t * restrict idat, 
+    uint8_t *decomp_buf
 ) {
     int res;
     z_stream stream;
     uint8_t n_channels;
     size_t scanline_len, decomp_len;
+
+    /* Ensure compression method is set as deflate */
+    assert((idat->data[0] & 0x0F) == 0x08);
 
     switch (ihdr->color_type) {
         case NONE: 
@@ -336,14 +352,9 @@ static IMC_Error _imc_chunk_to_idat(
 
     scanline_len = ((n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3) + 1; /* +1 for filter type */
     decomp_len = scanline_len * ihdr->height;
-    idat->length = decomp_len;
-
-    /* Compression type 8 = deflate */
-    assert((chunk->data[0] & 0x0F) == 0x08); 
-
-    idat->decomp_buf = malloc(idat->length);
-    if (idat->decomp_buf == NULL) {
-        IMC_WARN("Failed to allocate space for decomp_buf");
+    decomp_buf = malloc(decomp_len);
+    if (decomp_buf == NULL) {
+        IMC_WARN("Failed to allocate memory for decompression buffer");
         return IMC_EFAULT;
     }
 
@@ -356,20 +367,20 @@ static IMC_Error _imc_chunk_to_idat(
     res = inflateInit(&stream);
     if (res != Z_OK) {
         IMC_WARN("Failed to initialize decompression stream");
-        free(idat->decomp_buf);
-        idat->decomp_buf = NULL;
+        free(decomp_buf);
+        decomp_buf = NULL;
         return IMC_ERROR;
     }
 
-    stream.avail_in = chunk->length;
+    stream.avail_in = idat->length;
 
     do {
         if (stream.avail_in == 0) break;
-        stream.next_in = chunk->data;
+        stream.next_in = idat->data;
 
         do {
-            stream.avail_out = idat->length;
-            stream.next_out  = idat->decomp_buf;
+            stream.avail_out = decomp_len;
+            stream.next_out  = decomp_buf;
 
             res = inflate(&stream, Z_NO_FLUSH);
             switch (res) {
@@ -380,8 +391,8 @@ static IMC_Error _imc_chunk_to_idat(
                 {
                     IMC_WARN("Decompression error");
                     (void)inflateEnd(&stream);
-                    free(idat->decomp_buf);
-                    idat->decomp_buf = NULL;
+                    free(decomp_buf);
+                    decomp_buf = NULL;
                     return res;
                 }
             }
@@ -391,6 +402,91 @@ static IMC_Error _imc_chunk_to_idat(
     /* Cleanup */
     (void)inflateEnd(&stream);
     return (res == Z_STREAM_END) ? IMC_EOK : IMC_ERROR;
+}
+
+/**
+ *
+ */
+static IMC_Error _imc_reconstruct_idat(
+    const ihdr_t * restrict ihdr, 
+    uint8_t * restrict decomp_buf,
+    pixmap_t *pixmap
+) {
+    int res;
+    size_t x, scanline_len;
+    size_t decomp_off;
+    uint8_t fm, n_channels;
+    uint8_t *curr_scanline = NULL;
+    uint8_t *prev_scanline = NULL;
+    recon_func rf;
+
+    switch (ihdr->color_type) {
+        case NONE: 
+            IMC_WARN("GREYSCALE not implemented");
+            assert(false);
+            break;
+        case COLOR: 
+            n_channels = 3;
+            break;
+        case ALPHA: 
+            IMC_WARN("ALPHA not implemented");
+            assert(false);
+            break;
+        case (PALETTE | COLOR):
+            IMC_WARN("(PALETTE | COLOR) not implemented");
+            assert(false);
+            break;
+        case (COLOR | ALPHA):
+            IMC_WARN("(COLOR | ALPHA) not implemented");
+            assert(false);
+            break;
+    }
+
+    pixmap->width = scanline_len = (n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3;
+    pixmap->height = ihdr->height;
+    pixmap->data = malloc(pixmap->width * pixmap->height);
+    if (pixmap->data == NULL) {
+        IMC_WARN("Failed to allocate memory for pixmap->data");
+        return IMC_EFAULT;
+    }
+
+    prev_scanline = alloca(scanline_len);
+    memset((void*)prev_scanline, 0, scanline_len);
+
+    for (decomp_off = 0; decomp_off < (pixmap->width * pixmap->height); decomp_off += scanline_len) {
+        /* Filter method */
+        fm = decomp_buf[decomp_off++];
+        assert(fm <= 4);
+
+        switch (fm) {
+            case NONE: 
+                rf = _imc_recon_none;
+                break;                
+            case SUB:
+                rf = _imc_recon_sub;
+                break;
+            case UP:
+                rf = _imc_recon_up;
+                break;
+            case AVG: 
+                rf = _imc_recon_avg;
+                break;
+            case PAETH: 
+                rf = _imc_recon_paeth;
+                break;
+        }
+
+        curr_scanline = decomp_buf + decomp_off;
+
+        for (x = 0; x < scanline_len; ++x) {
+            bool is_first = (x < n_channels);
+            pixmap->data[pixmap->offset++] = rf(prev_scanline, curr_scanline, x, is_first);
+        }
+
+        prev_scanline = curr_scanline;
+    }
+
+    return IMC_EOK;
 }
 
 static void _imc_chunk_to_plte(chunk_t *chunk, plte_t *plte) {
@@ -470,91 +566,6 @@ static void _imc_chunk_to_trns(chunk_t *chunk, trns_t *trns) {
 }*/
 
 /**
- *
- */
-static IMC_Error _imc_reconstruct_idat(
-    const ihdr_t * restrict ihdr, 
-    const idat_t * restrict idat,
-    pixmap_t *pixmap
-) {
-    int res;
-    size_t x, scanline_len;
-    size_t decomp_off;
-    uint8_t fm, n_channels;
-    uint8_t *curr_scanline = NULL;
-    uint8_t *prev_scanline = NULL;
-    recon_func rf;
-
-    switch (ihdr->color_type) {
-        case NONE: 
-            IMC_WARN("GREYSCALE not implemented");
-            assert(false);
-            break;
-        case COLOR: 
-            n_channels = 3;
-            break;
-        case ALPHA: 
-            IMC_WARN("ALPHA not implemented");
-            assert(false);
-            break;
-        case (PALETTE | COLOR):
-            IMC_WARN("(PALETTE | COLOR) not implemented");
-            assert(false);
-            break;
-        case (COLOR | ALPHA):
-            IMC_WARN("(COLOR | ALPHA) not implemented");
-            assert(false);
-            break;
-    }
-
-    pixmap->width = scanline_len = (n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3;
-    pixmap->height += idat->length / pixmap->width;
-    pixmap->data = realloc(pixmap->data, pixmap->width * pixmap->height);
-    if (pixmap->data == NULL) {
-        IMC_WARN("Reallocation of pixmap->data failed");
-        return IMC_EFAULT;
-    }
-
-    prev_scanline = alloca(scanline_len);
-    memset((void*)prev_scanline, 0, scanline_len);
-
-    for (decomp_off = 0; decomp_off < idat->length; decomp_off += scanline_len) {
-        /* Filter method */
-        fm = idat->decomp_buf[decomp_off++];
-        assert(fm <= 4);
-
-        switch (fm) {
-            case NONE: 
-                rf = _imc_recon_none;
-                break;                
-            case SUB:
-                rf = _imc_recon_sub;
-                break;
-            case UP:
-                rf = _imc_recon_up;
-                break;
-            case AVG: 
-                rf = _imc_recon_avg;
-                break;
-            case PAETH: 
-                rf = _imc_recon_paeth;
-                break;
-        }
-
-        curr_scanline = idat->decomp_buf + decomp_off;
-
-        for (x = 0; x < scanline_len; ++x) {
-            bool is_first = (x < n_channels);
-            pixmap->data[pixmap->offset++] = rf(prev_scanline, curr_scanline, x, is_first);
-        }
-
-        prev_scanline = curr_scanline;
-    }
-
-    return IMC_EOK;
-}
-
-/**
  * @brief Outputs a PPM file containing the pixmap's data 
  * @since 15-01-2024
  * @param[in] fname The name of the output file
@@ -623,51 +634,58 @@ png_hndl_t imc_open_png(const char *path) {
     return png; 
 }
 
+static bool _imc_chunk_is_type(const chunk_t * restrict chunk, const char *type) {
+    if (memcmp(chunk->type, type, sizeof(chunk->type)) == 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 IMC_Error imc_parse_png(png_hndl_t png) {
     IMC_Error status;
     chunk_t chunk = { 0 }; 
     ihdr_t  ihdr  = { 0 };
     idat_t  idat  = { 0 };
     pixmap_t pixmap = { 0 };
+    uint8_t *decomp_buf = NULL;
 
-    status = _imc_read_chunk(png, &chunk);
-    if (status != IMC_EOK) {
-        return status;
-    }
 
     /* Read PNG IHDR chunk */
+    _imc_read_chunk(png, &chunk);
     _imc_chunk_to_ihdr(&chunk, &ihdr);
     _imc_print_ihdr_info(ihdr);
     _imc_destroy_chunk_data(&chunk);
 
-    /* Chunk processing loop */
+    /* Read all ancillary chunks prior to IDAT */
     while (true) {
-        if (_imc_read_chunk(png, &chunk) != IMC_EOK) {
+        _imc_read_chunk(png, &chunk);
+        if (!_imc_chunk_is_type(&chunk, IDAT)) {
+            _imc_destroy_chunk_data(&chunk);
+        } else {
             break;
         }
+    } 
 
-        /* TODO: Remove. Temporarily ignoring ancillary chunks */
-        if (memcmp(chunk.type, IDAT, sizeof(chunk.type)) != 0)  {
-            continue;
+    /* Read IDAT chunks */
+    while (true) {
+        if (_imc_chunk_is_type(&chunk, IDAT)) {
+            _imc_append_idat(&chunk, &idat);
+            _imc_destroy_chunk_data(&chunk);
+        } else {
+            break;
         }
+        _imc_read_chunk(png, &chunk);
+    } 
 
-        _imc_chunk_to_idat(&ihdr, &chunk, &idat);
-        /*if (_imc_proccess_next_chunk(png, &ihdr, &chunk) != IMC_EOK) {
-            break;
-        }*/
-        if (_imc_reconstruct_idat(&ihdr, &idat, &pixmap) != IMC_EOK) {
-            break;
-        }
-        if (_imc_destroy_chunk_data(&chunk) != IMC_EOK) {
-            break;
-        }
-    }
+    _imc_decompress_idat(&ihdr, &idat, decomp_buf);
+    _imc_reconstruct_idat(&ihdr, decomp_buf, &pixmap);
 
 #ifdef DEBUG
     _write_ppm_file("raster.ppm", pixmap);
 #endif
 
-    free(idat.decomp_buf);
+    free(idat.data);
     free(pixmap.data);
 
     return IMC_EOK;

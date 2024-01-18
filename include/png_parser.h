@@ -103,8 +103,9 @@ typedef struct {
 } plte_t;
 
 typedef struct {
-    uint8_t *decomp_buf;    /* Buffer for decompressed data */
-    size_t   length;        /* Length of buffer */
+    uint8_t *data;     /* Compressed data stream */
+    size_t   length;   /* Length of compressed data stream */
+    size_t   offset;   /* Offset into the buffer (used when appending multiple IDAT chunks) */
 } idat_t;
 
 typedef struct {
