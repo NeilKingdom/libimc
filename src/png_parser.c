@@ -69,11 +69,16 @@ static IMC_Error _imc_validate_png_ihdr(const png_hndl_t restrict png) {
  * @since 15-01-2024
  * @param[in] prev_scanline The previously unfiltered scanline
  * @param[in/out] curr_scanline The scanline being reconstructed
+ * @param[in] n_channels The number of channels / samples per pixel
  * @param[in] idx An index applied to curr_scanline to retrieve the current byte
- * @param[in] is_first Boolean indicating if the current byte resides within the first pixel of the scanline
  * @returns The reconstructed byte for curr_scanline[idx]
  */
-static uint8_t _imc_recon_none(uint8_t *prev_scanline, uint8_t *curr_scanline, const size_t idx, const bool is_first) {
+static uint8_t _imc_recon_none(
+    uint8_t *prev_scanline, 
+    uint8_t *curr_scanline, 
+    const uint8_t n_channels,
+    const size_t idx
+) {
     return curr_scanline[idx];
 }
 
@@ -83,14 +88,21 @@ static uint8_t _imc_recon_none(uint8_t *prev_scanline, uint8_t *curr_scanline, c
  * @since 15-01-2024
  * @param[in] prev_scanline The previously unfiltered scanline
  * @param[in/out] curr_scanline The scanline being reconstructed
+ * @param[in] n_channels The number of channels / samples per pixel
  * @param[in] idx An index applied to curr_scanline to retrieve the current byte
- * @param[in] is_first Boolean indicating if the current byte resides within the first pixel of the scanline
  * @returns The reconstructed byte for curr_scanline[idx]
  */
-static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, const size_t idx, const bool is_first) {
+static uint8_t _imc_recon_sub(
+    uint8_t *prev_scanline, 
+    uint8_t *curr_scanline, 
+    const uint8_t n_channels,
+    const size_t idx 
+) {
+    bool is_first = (idx < n_channels);
     uint32_t x = curr_scanline[idx];
-    uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3]; /* TODO: change 3 to bpp */
+    uint32_t a = (is_first) ? 0 : curr_scanline[idx - n_channels]; 
     uint8_t res = (x + a) % 256;
+
     curr_scanline[idx] = res;
     return res;
 }
@@ -101,14 +113,20 @@ static uint8_t _imc_recon_sub(uint8_t *prev_scanline, uint8_t *curr_scanline, co
  * @since 15-01-2024
  * @param[in] prev_scanline The previously unfiltered scanline
  * @param[in/out] curr_scanline The scanline being reconstructed
+ * @param[in] n_channels The number of channels / samples per pixel
  * @param[in] idx An index applied to curr_scanline to retrieve the current byte
- * @param[in] is_first Boolean indicating if the current byte resides within the first pixel of the scanline
  * @returns The reconstructed byte for curr_scanline[idx]
  */
-static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, size_t idx, bool is_first) {
+static uint8_t _imc_recon_up(
+    uint8_t *prev_scanline, 
+    uint8_t *curr_scanline, 
+    const uint8_t n_channels,
+    const size_t idx
+) {
     uint32_t x = curr_scanline[idx];
     uint32_t b = prev_scanline[idx];
     uint8_t res = (x + b) % 256;
+
     curr_scanline[idx] = res;
     return res;
 }
@@ -119,15 +137,23 @@ static uint8_t _imc_recon_up(uint8_t *prev_scanline, uint8_t *curr_scanline, siz
  * @since 15-01-2024
  * @param[in] prev_scanline The previously unfiltered scanline
  * @param[in/out] curr_scanline The scanline being reconstructed
+ * @param[in] n_channels The number of channels / samples per pixel
  * @param[in] idx An index applied to curr_scanline to retrieve the current byte
  * @param[in] is_first Boolean indicating if the current byte resides within the first pixel of the scanline
  * @returns The reconstructed byte for curr_scanline[idx]
  */
-static uint8_t _imc_recon_avg(uint8_t *prev_scanline, uint8_t *curr_scanline, size_t idx, bool is_first) {
+static uint8_t _imc_recon_avg(
+    uint8_t *prev_scanline, 
+    uint8_t *curr_scanline, 
+    const uint8_t n_channels,
+    const size_t idx
+) {
+    bool is_first = (idx < n_channels);
     uint32_t x = curr_scanline[idx];
-    uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3];
+    uint32_t a = (is_first) ? 0 : curr_scanline[idx - n_channels];
     uint32_t b = prev_scanline[idx];
     uint8_t res = (x + (int)floorf(((float)a + (float)b) / 2.0f)) % 256;
+
     curr_scanline[idx] = res;
     return res;
 }
@@ -163,16 +189,23 @@ static uint32_t _imc_peath_predictor(const uint8_t a, const uint8_t b, const uin
  * @since 15-01-2024
  * @param[in] prev_scanline The previously unfiltered scanline
  * @param[in/out] curr_scanline The scanline being reconstructed
+ * @param[in] n_channels The number of channels / samples per pixel
  * @param[in] idx An index applied to curr_scanline to retrieve the current byte
- * @param[in] is_first Boolean indicating if the current byte resides within the first pixel of the scanline
  * @returns The reconstructed byte for curr_scanline[idx]
  */
-static uint8_t _imc_recon_paeth(uint8_t *prev_scanline, uint8_t *curr_scanline, const size_t idx, const bool is_first) {
+static uint8_t _imc_recon_paeth(
+    uint8_t *prev_scanline, 
+    uint8_t *curr_scanline, 
+    const uint8_t n_channels,
+    const size_t idx
+) {
+    bool is_first = (idx < n_channels);
     uint32_t x = curr_scanline[idx];
-    uint32_t a = (is_first) ? 0 : curr_scanline[idx - 3];
+    uint32_t a = (is_first) ? 0 : curr_scanline[idx - n_channels];
     uint32_t b = prev_scanline[idx];
-    uint32_t c = (is_first) ? 0 : prev_scanline[idx - 3];
+    uint32_t c = (is_first) ? 0 : prev_scanline[idx - n_channels];
     uint8_t res = (x + _imc_peath_predictor(a, b, c)) % 256;
+
     curr_scanline[idx] = res;
     return res;
 }
@@ -247,12 +280,33 @@ static IMC_Error _imc_destroy_chunk_data(chunk_t *chunk) {
  * @warning May fail if PNG ever supports compression methods beyond 0 (deflate) or filter methods beyond 0
  */
 static void _imc_chunk_to_ihdr(const chunk_t * restrict chunk, ihdr_t * restrict ihdr) {
-    assert(chunk->length + sizeof(ihdr->padding) == sizeof(*ihdr)); 
     memcpy((void*)ihdr, (void*)chunk->data, sizeof(*ihdr));
     _IMC_FLIP_ENDIAN(&ihdr->width);
     _IMC_FLIP_ENDIAN(&ihdr->height);
     _IMC_FLIP_ENDIAN(&ihdr->bit_depth);
     _IMC_FLIP_ENDIAN(&ihdr->color_type);
+
+    switch (ihdr->color_type) {
+        case NONE: 
+            IMC_WARN("GREYSCALE not implemented");
+            assert(false);
+            break;
+        case COLOR: 
+            ihdr->n_channels = 3;
+            break;
+        case ALPHA: 
+            IMC_WARN("ALPHA not implemented");
+            assert(false);
+            break;
+        case (PALETTE | COLOR):
+            IMC_WARN("(PALETTE | COLOR) not implemented");
+            assert(false);
+            break;
+        case (COLOR | ALPHA):
+            ihdr->n_channels = 4;
+            break;
+    }
+
     _IMC_FLIP_ENDIAN(&ihdr->compress_mthd);
     /* PNG currently supports type 0 only */
     assert(ihdr->compress_mthd == 0); 
@@ -328,29 +382,7 @@ static IMC_Error _imc_decompress_idat(
     /* Ensure compression method is set as deflate */
     assert((idat->data[0] & 0x0F) == 0x08);
 
-    switch (ihdr->color_type) {
-        case NONE: 
-            IMC_WARN("GREYSCALE not implemented");
-            assert(false);
-            break;
-        case COLOR: 
-            n_channels = 3;
-            break;
-        case ALPHA: 
-            IMC_WARN("ALPHA not implemented");
-            assert(false);
-            break;
-        case (PALETTE | COLOR):
-            IMC_WARN("(PALETTE | COLOR) not implemented");
-            assert(false);
-            break;
-        case (COLOR | ALPHA):
-            IMC_WARN("(COLOR | ALPHA) not implemented");
-            assert(false);
-            break;
-    }
-
-    scanline_len = ((n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3) + 1; /* +1 for filter type */
+    scanline_len = ((ihdr->n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3) + 1; /* +1 for filter type */
     decomp_len = scanline_len * ihdr->height;
     *decomp_buf = malloc(decomp_len);
     if (*decomp_buf == NULL) {
@@ -420,29 +452,7 @@ static IMC_Error _imc_reconstruct_idat(
     uint8_t *prev_scanline = NULL;
     recon_func rf;
 
-    switch (ihdr->color_type) {
-        case NONE: 
-            IMC_WARN("GREYSCALE not implemented");
-            assert(false);
-            break;
-        case COLOR: 
-            n_channels = 3;
-            break;
-        case ALPHA: 
-            IMC_WARN("ALPHA not implemented");
-            assert(false);
-            break;
-        case (PALETTE | COLOR):
-            IMC_WARN("(PALETTE | COLOR) not implemented");
-            assert(false);
-            break;
-        case (COLOR | ALPHA):
-            IMC_WARN("(COLOR | ALPHA) not implemented");
-            assert(false);
-            break;
-    }
-
-    pixmap->width = scanline_len = (n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3;
+    pixmap->width = scanline_len = (ihdr->n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3;
     pixmap->height = ihdr->height;
     pixmap->data = malloc(pixmap->width * pixmap->height);
     if (pixmap->data == NULL) {
@@ -479,8 +489,7 @@ static IMC_Error _imc_reconstruct_idat(
         curr_scanline = decomp_buf + decomp_off;
 
         for (x = 0; x < scanline_len; ++x) {
-            bool is_first = (x < n_channels);
-            pixmap->data[pixmap->offset++] = rf(prev_scanline, curr_scanline, x, is_first);
+            pixmap->data[pixmap->offset++] = rf(prev_scanline, curr_scanline, ihdr->n_channels, x);
         }
 
         prev_scanline = curr_scanline;
@@ -565,31 +574,49 @@ static void _imc_chunk_to_trns(chunk_t *chunk, trns_t *trns) {
     }
 }*/
 
+static rgb_t _imc_alpha_blend(const rgb_t rgb, const float alpha, const rgb_t bg_col) {
+    uint8_t r, g, b;
+    r = (1.0f - alpha) * bg_col.r + alpha * rgb.r;
+    g = (1.0f - alpha) * bg_col.g + alpha * rgb.g;
+    b = (1.0f - alpha) * bg_col.b + alpha * rgb.b;
+    return (rgb_t){ r, g, b };
+}
+
 /**
  * @brief Outputs a PPM file containing the pixmap's data 
  * @since 15-01-2024
  * @param[in] fname The name of the output file
  * @param[in] pixmap A pixmap_t struct containing the data to be written to the PPM file
  */
-static void _write_ppm_file(const char *fname, const pixmap_t pixmap) {
-    size_t x, y, scanline_len;
+static void _write_ppm_file(const ihdr_t * restrict ihdr, const char *fname, const pixmap_t pixmap) {
+    rgb_t bg_col = (rgb_t){ 255, 255, 255 };
+    size_t x, y, bpp, scanline_len;
     FILE *fp = NULL;
     
-    scanline_len = pixmap.width / sizeof(rgb_t);
+    bpp = (size_t)powf(2.0f, ihdr->bit_depth) - 1.0f;
+    scanline_len = pixmap.width / ihdr->n_channels;
     fp = fopen(fname, "wb");
 
     /* Header */
     fputs("P6\n", fp);
     fprintf(fp, "%ld %ld\n", scanline_len, pixmap.height);
-    fputs("255\n", fp);
+    fprintf(fp, "%ld\n", bpp);
      
     /* Data */
     for (y = 0; y < pixmap.height; ++y) {
         for (x = 0; x < scanline_len; ++x) {
-            rgb_t pixel = ((rgb_t*)pixmap.data)[(y * scanline_len) + x];
-            fputc(pixel.r, fp);
-            fputc(pixel.g, fp);
-            fputc(pixel.b, fp);
+            if (ihdr->color_type == COLOR) {
+                rgb_t rgb = ((rgb_t*)pixmap.data)[(y * scanline_len) + x];
+                fputc(rgb.r, fp);
+                fputc(rgb.g, fp);
+                fputc(rgb.b, fp);
+            } else if (ihdr->color_type == (COLOR | ALPHA)) {
+                rgba_t rgba = ((rgba_t*)pixmap.data)[(y * scanline_len) + x];
+                rgb_t rgb = _imc_alpha_blend((rgb_t){ rgba.r, rgba.g, rgba.b }, rgba.a, bg_col);
+                fputc(255 - rgb.r, fp);
+                fputc(255 - rgb.g, fp);
+                fputc(255 - rgb.b, fp);
+            }
         }
     }
 
@@ -681,7 +708,7 @@ IMC_Error imc_parse_png(png_hndl_t png) {
     _imc_reconstruct_idat(&ihdr, decomp_buf, &pixmap);
 
 #ifdef DEBUG
-    _write_ppm_file("raster.ppm", pixmap);
+    _write_ppm_file(&ihdr, "raster.ppm", pixmap);
 #endif
 
     free(idat.data);

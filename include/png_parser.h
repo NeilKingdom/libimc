@@ -75,6 +75,17 @@ typedef struct {
     char     type[4];   /* Chunk type code */
 } chunk_t;
 
+/**
+ * =============================================================
+ * Image type        Color type      Bit depths      Explanation
+ * =============================================================
+ *
+ * Greyscale           0             1, 2, 4, 8, 16  Each pixel is a greyscale sample
+ * Truecolor           2             8, 6            Each pixel is an RGB triple
+ * Indexed-color       3             1, 2, 4, 8      Each pixel is a palette index (see PLTE)
+ * Greyscale + alpha   4             8, 16           Each pixel is a greyscale sample followed by alpha sample
+ * Truecolor + alpha   6             8, 16           Each pixel is an RGB triple followed by alpha sample
+ */
 typedef enum {
     PALETTE = 1,
     COLOR   = 2, 
@@ -82,24 +93,19 @@ typedef enum {
 } ColorType;
 
 typedef struct {
-    uint32_t width;             /* Image widht */
+    uint32_t width;             /* Image width */
     uint32_t height;            /* Image height */
     uint8_t  bit_depth;         /* Pixel bit-depth */
     uint8_t  color_type;        /* See enum ColorType */
     uint8_t  compress_mthd;     /* Currently only 0 (LZ77) */
     uint8_t  filter_mthd;       /* Currently onlt 0 (Adaptive filtering) */
     uint8_t  interlace_mthd;    /* 0 = Non-interlaced, 1 = interlaced */
-    uint8_t  padding[3];        /* Padding for struct bit alignment */
+    uint8_t  n_channels;        /* The number of channels / samples per pixel */
+    uint8_t  padding[2];        /* Padding for struct bit alignment */
 } ihdr_t;
 
 typedef struct {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-} color_rgb_t;
-
-typedef struct {
-    color_rgb_t plte_entries[256];
+    rgb_t plte_entries[256];
 } plte_t;
 
 typedef struct {
@@ -158,7 +164,12 @@ typedef struct {
 } *png_hndl_t;
 
 /* Used for reconstructing filtered scanlines */
-typedef uint8_t (*recon_func)(uint8_t *, uint8_t *, const size_t, const bool);
+typedef uint8_t (*recon_func)(
+    uint8_t *prev_scanline, 
+    uint8_t *curr_scanline, 
+    const uint8_t n_channels, 
+    const size_t idx
+);
 
 /* Forward function decls */
 
