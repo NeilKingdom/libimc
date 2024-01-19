@@ -302,8 +302,8 @@ static IMC_Error _imc_append_idat(const chunk_t * restrict chunk, idat_t * restr
         IMC_WARN("Failed to allocate memory for IDAT compression data");
         return IMC_EFAULT;
     }
-    memcpy((void*)(idat->data + idat->offset - 1), (void*)chunk->data, chunk->length);
-    idat->offset += chunk->length;
+    memcpy((void*)(idat->data + idat->offset), (void*)chunk->data, chunk->length);
+    idat->offset = idat->length;
 
     return IMC_EOK;
 }
@@ -318,7 +318,7 @@ static IMC_Error _imc_append_idat(const chunk_t * restrict chunk, idat_t * restr
 static IMC_Error _imc_decompress_idat(
     const ihdr_t * restrict ihdr, 
     const idat_t * restrict idat, 
-    uint8_t *decomp_buf
+    uint8_t **decomp_buf
 ) {
     int res;
     z_stream stream;
@@ -352,8 +352,8 @@ static IMC_Error _imc_decompress_idat(
 
     scanline_len = ((n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3) + 1; /* +1 for filter type */
     decomp_len = scanline_len * ihdr->height;
-    decomp_buf = malloc(decomp_len);
-    if (decomp_buf == NULL) {
+    *decomp_buf = malloc(decomp_len);
+    if (*decomp_buf == NULL) {
         IMC_WARN("Failed to allocate memory for decompression buffer");
         return IMC_EFAULT;
     }
@@ -367,8 +367,8 @@ static IMC_Error _imc_decompress_idat(
     res = inflateInit(&stream);
     if (res != Z_OK) {
         IMC_WARN("Failed to initialize decompression stream");
-        free(decomp_buf);
-        decomp_buf = NULL;
+        free(*decomp_buf);
+        *decomp_buf = NULL;
         return IMC_ERROR;
     }
 
@@ -380,7 +380,7 @@ static IMC_Error _imc_decompress_idat(
 
         do {
             stream.avail_out = decomp_len;
-            stream.next_out  = decomp_buf;
+            stream.next_out  = *decomp_buf;
 
             res = inflate(&stream, Z_NO_FLUSH);
             switch (res) {
@@ -391,8 +391,8 @@ static IMC_Error _imc_decompress_idat(
                 {
                     IMC_WARN("Decompression error");
                     (void)inflateEnd(&stream);
-                    free(decomp_buf);
-                    decomp_buf = NULL;
+                    free(*decomp_buf);
+                    *decomp_buf = NULL;
                     return res;
                 }
             }
@@ -650,7 +650,6 @@ IMC_Error imc_parse_png(png_hndl_t png) {
     pixmap_t pixmap = { 0 };
     uint8_t *decomp_buf = NULL;
 
-
     /* Read PNG IHDR chunk */
     _imc_read_chunk(png, &chunk);
     _imc_chunk_to_ihdr(&chunk, &ihdr);
@@ -678,7 +677,7 @@ IMC_Error imc_parse_png(png_hndl_t png) {
         _imc_read_chunk(png, &chunk);
     } 
 
-    _imc_decompress_idat(&ihdr, &idat, decomp_buf);
+    _imc_decompress_idat(&ihdr, &idat, &decomp_buf);
     _imc_reconstruct_idat(&ihdr, decomp_buf, &pixmap);
 
 #ifdef DEBUG
