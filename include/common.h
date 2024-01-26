@@ -60,7 +60,7 @@ static void _imc_warn(char *file, const char *func, int line, const char *msg) {
 
 #define IMC_WARN(msg) (_imc_warn((__FILE__), (__func__), (__LINE__), (msg)))
 
-#ifdef __cplusplus
+#ifdef __cplusplus__
 }
 #endif /* __cplusplus */
 
