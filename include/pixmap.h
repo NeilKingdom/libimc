@@ -20,8 +20,10 @@ typedef enum {
     BICUBIC     /* Bicubic interpolation */
 } ScaleMethod;
 
-pixmap_t    imc_scale_pixbuf(const pixmap_t pixmap, const float new_width, const float new_height, const ScaleMethod sm);
-rgb_t       imc_sample_pixbuf(const pixmap_t pixmap, const float x, const float y);
+rgba_t      imc_sample_pixbuf(const pixmap_t pixmap, const float x, const float y);
+pixmap_t    imc_scale_pixbuf(const pixmap_t pixmap, const float width, const float height, const ScaleMethod sm);
+pixmap_t    imc_make_pixbuf_grayscale(const pixmap_t pixmap);
+pixmap_t    imc_make_pixbuf_monochrome(const pixmap_t pixmap, const float luma_threshold);
 
 #ifdef __cplusplus
 }

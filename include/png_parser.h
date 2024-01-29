@@ -1,8 +1,16 @@
 #ifndef PNG_PARSER_H
 #define PNG_PARSER_H
 
+/* Required for fileno() */
+#ifndef _POSIX_SOURCE
+#define _POSIX_SOURCE
+#endif 
+
 #include "common.h"
 #include "pixmap.h"
+
+#include <zlib.h>
+#include <sys/stat.h> 
 
 #ifdef __cplusplus
 extern "C" {

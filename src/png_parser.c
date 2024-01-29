@@ -1,14 +1,5 @@
-/* Required for fileno() */
-#ifndef _POSIX_SOURCE
-#define _POSIX_SOURCE
-#endif 
-
-#include <math.h>
-#include <zlib.h>
-#include <alloca.h>
-#include <sys/stat.h> 
-
 #include "../include/png_parser.h"
+#include "../include/pixmap.h"
 
 /**
  * @brief Flip the endianness of a given primitive
@@ -50,8 +41,8 @@ static IMC_Error _imc_validate_png_ihdr(const png_hndl_t restrict png) {
         IMC_WARN("Not a PNG file");
         return IMC_ERROR;
     }
-    fseek(png->fp, sizeof(PNG_MAGIC), SEEK_SET); 
 
+    fseek(png->fp, sizeof(PNG_MAGIC), SEEK_SET); 
     return IMC_EOK;
 }
 
@@ -670,12 +661,14 @@ static bool _imc_chunk_is_type(const chunk_t * restrict chunk, const char *type)
     }
 }
 
+/* TODO: Return pixmap */
 IMC_Error imc_parse_png(png_hndl_t png) {
     IMC_Error status;
     chunk_t chunk = { 0 }; 
     ihdr_t  ihdr  = { 0 };
     idat_t  idat  = { 0 };
     pixmap_t pixmap = { 0 };
+    pixmap_t grayscale = { 0 };
     uint8_t *decomp_buf = NULL;
 
     /* Read PNG IHDR chunk */
@@ -708,12 +701,15 @@ IMC_Error imc_parse_png(png_hndl_t png) {
     _imc_decompress_idat(&ihdr, &idat, &decomp_buf);
     _imc_reconstruct_idat(&ihdr, decomp_buf, &pixmap);
 
+    grayscale = imc_make_pixbuf_grayscale(pixmap);
+    
 #ifdef DEBUG
-    _write_ppm_file(&ihdr, "raster.ppm", pixmap);
+    _write_ppm_file(&ihdr, "raster.ppm", grayscale);
 #endif
 
     free(idat.data);
     free(pixmap.data);
+    free(grayscale.data);
 
     return IMC_EOK;
 }

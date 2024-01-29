@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <unistd.h>
+#include <alloca.h>
+#include <math.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +40,11 @@ typedef enum {
     IMC_EFAULT,  /* Bad address */
     IMC_EOF      /* End of file */
 } IMC_Error;
+
+__attribute__((always_inline))
+static inline float imc_lerp(const float a, const float b, const float t) {
+    return a + t * (b - a);
+}
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
