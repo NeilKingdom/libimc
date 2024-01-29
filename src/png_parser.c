@@ -576,9 +576,10 @@ static void _imc_chunk_to_trns(chunk_t *chunk, trns_t *trns) {
 
 static rgb_t _imc_alpha_blend(const rgb_t rgb, const float alpha, const rgb_t bg_col) {
     uint8_t r, g, b;
-    r = (1.0f - alpha) * bg_col.r + alpha * rgb.r;
-    g = (1.0f - alpha) * bg_col.g + alpha * rgb.g;
-    b = (1.0f - alpha) * bg_col.b + alpha * rgb.b;
+    float _alpha = alpha / 255.0f;
+    r = (1.0f - _alpha) * bg_col.r + _alpha * rgb.r;
+    g = (1.0f - _alpha) * bg_col.g + _alpha * rgb.g;
+    b = (1.0f - _alpha) * bg_col.b + _alpha * rgb.b;
     return (rgb_t){ r, g, b };
 }
 
@@ -613,9 +614,9 @@ static void _write_ppm_file(const ihdr_t * restrict ihdr, const char *fname, con
             } else if (ihdr->color_type == (COLOR | ALPHA)) {
                 rgba_t rgba = ((rgba_t*)pixmap.data)[(y * scanline_len) + x];
                 rgb_t rgb = _imc_alpha_blend((rgb_t){ rgba.r, rgba.g, rgba.b }, rgba.a, bg_col);
-                fputc(255 - rgb.r, fp);
-                fputc(255 - rgb.g, fp);
-                fputc(255 - rgb.b, fp);
+                fputc(rgb.r, fp);
+                fputc(rgb.g, fp);
+                fputc(rgb.b, fp);
             }
         }
     }
