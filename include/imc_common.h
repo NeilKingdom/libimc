@@ -1,5 +1,5 @@
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef IMC_COMMON_H
+#define IMC_COMMON_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,27 +19,28 @@ typedef struct {
     uint8_t r;
     uint8_t g;
     uint8_t b;
-} rgb_t;
+} Rgb_t;
 
 typedef struct {
     uint8_t r;
     uint8_t g;
     uint8_t b;
     uint8_t a;
-} rgba_t;
+} Rgba_t;
 
 /* Change to static to make all functions static */
 #define IMC_DECL
 
+/* Errors align with those defined in errno.h */
 typedef enum {
-    IMC_EOK = 0, /* No error */
-    IMC_ERROR,   /* General error */
-    IMC_EINVAL,  /* The argument was invalid */
-    IMC_ENOMEM,  /* Not enough memory */
-    IMC_EFREE,   /* Error freeing memory */
-    IMC_EFAULT,  /* Bad address */
-    IMC_EOF      /* End of file */
-} IMC_Error;
+    IMC_EFAIL       = -1,   /* General purpose error */
+    IMC_EOK         =  0,   /* No error */
+    IMC_ENOMEM      =  12,  /* Not enough memory */
+    IMC_EFAULT      =  14,  /* Bad address */
+    IMC_EINVAL      =  22,  /* The argument was invalid */
+    IMC_ENODATA     =  61,  /* No data available */
+    IMC_EOVERFLOW   =  75,  /* Value too large to be stored in data type */
+} ImcError_t;
 
 __attribute__((always_inline))
 static inline float imc_lerp(const float a, const float b, const float t) {
@@ -53,7 +54,7 @@ static inline float imc_lerp(const float a, const float b, const float t) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
-static void _imc_warn(char *file, const char *func, int line, const char *msg) {
+static void _imc_warn(const char *file, const char *func, const int line, const char *msg) {
    fprintf(stderr, "=========== WARNING ===========\n"
                    "File: %s, Function: %s, Line: %d\n"
                    "Short message: %s\n\n",
@@ -65,10 +66,12 @@ static void _imc_warn(char *file, const char *func, int line, const char *msg) {
 #pragma clang diagnostic pop
 #endif
 
-#define IMC_WARN(msg) (_imc_warn((__FILE__), (__func__), (__LINE__), (msg)))
+#define IMC_WARN(msg) do { \
+    _imc_warn((__FILE__), (__func__), (__LINE__), (msg)); \
+} while (0)
 
-#ifdef __cplusplus__
+#ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* COMMON_H */
+#endif /* IMC_COMMON_H */

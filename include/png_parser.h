@@ -4,13 +4,13 @@
 /* Required for fileno() */
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
-#endif 
-
-#include "common.h"
-#include "pixmap.h"
+#endif
 
 #include <zlib.h>
-#include <sys/stat.h> 
+#include <sys/stat.h>
+
+#include "imc_common.h"
+#include "pixmap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,19 +35,19 @@ extern "C" {
  * =========================================================
  * Name     Multiple OK?    Ordering constraints
  *
- * cHRM     No              Before PLTE and IDAT 
- * gAMA     No              Before PLTE and IDAT 
- * iCCP     No              Before PLTE and IDAT 
- * sBIT     No              Before PLTE and IDAT 
- * sRGB     No              Before PLTE and IDAT 
- * bKGD     No              After PLTE; before IDAT 
- * hIST     No              After PLTE; before IDAT 
- * pHYs     No              After PLTE; before IDAT 
- * sPLT     Yes             Before IDAT 
- * tIME     No              None 
- * iTXt     Yes             None 
- * tEXt     Yes             None    
- * zTXt     Yes             None 
+ * cHRM     No              Before PLTE and IDAT
+ * gAMA     No              Before PLTE and IDAT
+ * iCCP     No              Before PLTE and IDAT
+ * sBIT     No              Before PLTE and IDAT
+ * sRGB     No              Before PLTE and IDAT
+ * bKGD     No              After PLTE; before IDAT
+ * hIST     No              After PLTE; before IDAT
+ * pHYs     No              After PLTE; before IDAT
+ * sPLT     Yes             Before IDAT
+ * tIME     No              None
+ * iTXt     Yes             None
+ * tEXt     Yes             None
+ * zTXt     Yes             None
  */
 
 /* Critical chunks */
@@ -81,7 +81,7 @@ typedef struct {
     uint32_t crc;       /* Cyclic Redundancy Check */
     uint8_t *data;      /* Chunk data (variable size) */
     char     type[4];   /* Chunk type code */
-} chunk_t;
+} Chunk_t;
 
 /**
  * =============================================================
@@ -96,9 +96,9 @@ typedef struct {
  */
 typedef enum {
     PALETTE = 1,
-    COLOR   = 2, 
+    COLOR   = 2,
     ALPHA   = 4
-} ColorType;
+} ColorType_t;
 
 typedef struct {
     uint32_t width;             /* Image width */
@@ -110,25 +110,25 @@ typedef struct {
     uint8_t  interlace_mthd;    /* 0 = Non-interlaced, 1 = interlaced */
     uint8_t  n_channels;        /* The number of channels / samples per pixel */
     uint8_t  padding[2];        /* Padding for struct bit alignment */
-} ihdr_t;
+} Ihdr_t;
 
 typedef struct {
-    rgb_t plte_entries[256];
-} plte_t;
+    Rgb_t plte_entries[256];
+} Plte_t;
 
 typedef struct {
     uint8_t *data;     /* Compressed data stream */
     size_t   length;   /* Length of compressed data stream */
     size_t   offset;   /* Offset into the buffer (used when appending multiple IDAT chunks) */
-} idat_t;
+} Idat_t;
 
 typedef struct {
 
-} trns_t;
+} Trns_t;
 
 typedef struct {
 
-} gama_t;
+} Gama_t;
 
 typedef struct {
     uint32_t wpoint_x;  /* White-point x */
@@ -139,52 +139,52 @@ typedef struct {
     uint32_t green_y;   /* Green y */
     uint32_t blue_x;    /* Blue x */
     uint32_t blue_y;    /* Blue y */
-} chrm_t;
+} Chrm_t;
 
 typedef enum {
     PERCEPTUAL,     /* Perceptual */
     RELATIVE,       /* Relative colorimetric */
-    SATURATION,     /* Saturation */ 
+    SATURATION,     /* Saturation */
     ABSOLUTE        /* Absolute colorimetric */
-} RenderIntent;
+} RenderIntent_t;
 
 typedef struct {
-    RenderIntent ri;    /* See enum RenderIntent */
-} srgb_t;
+    RenderIntent_t ri;    /* See enum RenderIntent */
+} Srgb_t;
 
 typedef struct {
     char     profile_name[79];
     uint8_t  compress_mthd;
     uint8_t *comp_profile;
-} iccp_t;
+} Iccp_t;
 
 typedef enum {
-    SUB = 1,   
-    UP,     
-    AVG,    
+    SUB = 1,
+    UP,
+    AVG,
     PAETH
-} FilterMethod;
+} FilterMethod_t;
 
 typedef struct {
     FILE    *fp;    /* The file handle */
     uint8_t *data;  /* Copy of raw data */
     size_t   size;  /* Size of data in bytes */
-} *png_hndl_t;
+} *pPngHndl_t, PngHndl_t;
 
 /* Used for reconstructing filtered scanlines */
 typedef uint8_t (*recon_func)(
-    uint8_t *prev_scanline, 
-    uint8_t *curr_scanline, 
-    const uint8_t n_channels, 
+    uint8_t *prev_scanline,
+    uint8_t *curr_scanline,
+    const uint8_t n_channels,
     const size_t idx
 );
 
 /* Forward function decls */
 
-png_hndl_t  imc_open_png(const char *path);
-IMC_Error   imc_close_png(png_hndl_t png);
-IMC_Error   imc_parse_png(png_hndl_t png);
-IMC_Error   imc_destroy_png(png_hndl_t png);
+pPngHndl_t      imc_open_png(const char *path);
+ImcError_t      imc_close_png(pPngHndl_t png);
+ImcError_t      imc_parse_png(pPngHndl_t png);
+ImcError_t      imc_destroy_png(pPngHndl_t png);
 
 #ifdef __cplusplus
 }

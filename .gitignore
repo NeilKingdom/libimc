@@ -1,5 +1,7 @@
-LICENSE
-test.c 
+.clangd
+compile_flags.txt
+test.c
 imc_test
+raster.ppm
 obj
 bin

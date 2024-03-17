@@ -1,29 +1,29 @@
 #ifndef PIXMAP_H
 #define PIXMAP_H
 
-#include "common.h"
+#include "imc_common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-typedef struct PixBuf {
+typedef struct {
     uint8_t *data;
     size_t   offset;
     size_t   width;
     size_t   height;
-} pixmap_t;
+} Pixmap_t;
 
 typedef enum {
     NEAREST,    /* Nearest-neighbor */
     BILINEAR,   /* Bilinear interpolation */
     BICUBIC     /* Bicubic interpolation */
-} ScaleMethod;
+} ScaleMethod_t;
 
-rgba_t      imc_sample_pixbuf(const pixmap_t pixmap, const float x, const float y);
-pixmap_t    imc_scale_pixbuf(const pixmap_t pixmap, const float width, const float height, const ScaleMethod sm);
-pixmap_t    imc_make_pixbuf_grayscale(const pixmap_t pixmap);
-pixmap_t    imc_make_pixbuf_monochrome(const pixmap_t pixmap, const float luma_threshold);
+Rgba_t      imc_sample_pixbuf(const Pixmap_t pixmap, const float x, const float y);
+Pixmap_t    imc_scale_pixbuf(const Pixmap_t pixmap, const float width, const float height, const ScaleMethod_t sm);
+Pixmap_t    imc_make_pixbuf_grayscale(const Pixmap_t pixmap);
+Pixmap_t    imc_make_pixbuf_monochrome(const Pixmap_t pixmap, const float luma_threshold);
 
 #ifdef __cplusplus
 }

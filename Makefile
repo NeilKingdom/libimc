@@ -1,7 +1,7 @@
 CC = gcc
 PROFILE ?= DEBUG
 
-CCFLAGS_DEBUG = -g -O0 -fno-builtin -DDEBUG
+CCFLAGS_DEBUG = -ggdb -O0 -fno-builtin -DDEBUG
 CCFLAGS_RELEASE = -O2
 
 SRC_DIR := src
@@ -17,7 +17,7 @@ SRCS := $(wildcard $(SRC_DIR)/*.c)
 DEPS := $(wildcard $(SRC_DIR)/*.h)
 OBJS := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-CCFLAGS += $(CCFLAGS_$(PROFILE)) -I$(INC_DIR) -Wall -Wextra -Wformat -std=c99 #-Werror
+CCFLAGS += $(CCFLAGS_$(PROFILE)) -I$(INC_DIR) -std=c99 -Wall -Wextra -Wformat #-Werror
 LDFLAGS += -lc -lm -lz -lcheck
 
 BINS := $(BIN_DIR)/libimc.a $(BIN_DIR)/libimc.so
@@ -28,7 +28,7 @@ all: $(BINS)
 # Copy libraries to /usr/lib
 install: all
 	cp $(BINS) $(TGT_BIN_DIR)
-	#cp $(INC_DIR)/*.h $(TGT_INC_DIR)
+	cp $(INC_DIR)/*.h $(TGT_INC_DIR)
 
 # Remove object files and binaries
 clean:
