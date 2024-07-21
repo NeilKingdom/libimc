@@ -42,6 +42,12 @@ typedef enum {
     IMC_EOVERFLOW   =  75,  /* Value too large to be stored in data type */
 } ImcError_t;
 
+typedef enum {
+    IMC_NOTE,
+    IMC_WARNING,
+    IMC_ERROR
+} ImcLogLevel_t;
+
 __attribute__((always_inline))
 static inline float imc_lerp(const float a, const float b, const float t) {
     return a + t * (b - a);
@@ -54,20 +60,43 @@ static inline float imc_lerp(const float a, const float b, const float t) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
-static void _imc_warn(const char *file, const char *func, const int line, const char *msg) {
-   fprintf(stderr, "=========== WARNING ===========\n"
-                   "File: %s, Function: %s, Line: %d\n"
-                   "Short message: %s\n\n",
-                   file, func, line, msg);
+
+static void _imc_log(
+    const char *file,
+    const char *func,
+    const int line,
+    const char *msg,
+    const ImcLogLevel_t level) {
+
+    char header[20];
+    switch (level) {
+        case IMC_NOTE:
+            strncpy(header, "NOTE", 20);
+            break;
+        case IMC_WARNING:
+            strncpy(header, "WARNING", 20);
+            break;
+        case IMC_ERROR:
+            strncpy(header, "ERROR", 20);
+            break;
+    }
+
+    fprintf((level == IMC_NOTE) ? stdout : stderr,
+        "\n=========== %s ===========\n"
+        "Logger: %s\n"
+        "File: %s, Function: %s, Line: %d\n",
+        header, msg, file, func, line
+    );
 }
+
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #elif defined(__clang__)
 #pragma clang diagnostic pop
 #endif
 
-#define IMC_WARN(msg) do { \
-    _imc_warn((__FILE__), (__func__), (__LINE__), (msg)); \
+#define IMC_LOG(msg, level) do { \
+    _imc_log((__FILE__), (__func__), (__LINE__), (msg), (level)); \
 } while (0)
 
 #ifdef __cplusplus

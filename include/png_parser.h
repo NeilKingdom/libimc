@@ -149,7 +149,7 @@ typedef enum {
 } RenderIntent_t;
 
 typedef struct {
-    RenderIntent_t ri;    /* See enum RenderIntent */
+    RenderIntent_t ri;
 } Srgb_t;
 
 typedef struct {
@@ -169,7 +169,7 @@ typedef struct {
     FILE    *fp;    /* The file handle */
     uint8_t *data;  /* Copy of raw data */
     size_t   size;  /* Size of data in bytes */
-} *pPngHndl_t, PngHndl_t;
+} PngHndl_t;
 
 /* Used for reconstructing filtered scanlines */
 typedef uint8_t (*recon_func)(
@@ -179,12 +179,12 @@ typedef uint8_t (*recon_func)(
     const size_t idx
 );
 
-/* Forward function decls */
+/* Forward function declarations */
 
-pPngHndl_t      imc_open_png(const char *path);
-ImcError_t      imc_close_png(pPngHndl_t png);
-ImcError_t      imc_parse_png(pPngHndl_t png);
-ImcError_t      imc_destroy_png(pPngHndl_t png);
+PngHndl_t*      imc_open_png(const char *path);
+ImcError_t      imc_close_png(PngHndl_t *png);
+Pixmap_t        imc_parse_png(PngHndl_t *png);
+ImcError_t      imc_destroy_png(PngHndl_t *png);
 
 #ifdef __cplusplus
 }
