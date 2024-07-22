@@ -36,8 +36,8 @@
  * @returns True if the chunk is of type "type", or false otherwise
  */
 static bool _imc_chunk_is_type(
-    const Chunk_t* const restrict chunk,
-    const char* const restrict type
+    const Chunk_t* const chunk,
+    const char* const type
 ) {
     if (memcmp(chunk->type, type, sizeof(chunk->type)) == 0) {
         return true;
@@ -60,15 +60,15 @@ static size_t _imc_get_file_size(FILE *fp) {
 }
 
 /**
- * @brief Validate the IHDR chunk of the PNG.
+ * @brief Validate the IHDR chunk of the PNG and seek past it.
  * @since 15-01-2024
  * @param A png_hndl_t struct containing the relevant PNG image data
  * @returns IMC_ERROR if the file is either not a PNG or the PNG was corrupted
  *          or IMC_EOK upon success
  */
-static ImcError_t _imc_validate_png_ihdr(const PngHndl_t *png) {
-    int res = memcmp((void*)png->data, (void*)PNG_MAGIC, sizeof(PNG_MAGIC));
-    if (res != 0) {
+static ImcError_t _imc_validate_png_ihdr(const PngHndl_t* const png) {
+    int status = memcmp((void*)png->data, (void*)PNG_MAGIC, sizeof(PNG_MAGIC));
+    if (status != 0) {
         IMC_LOG("Not a PNG file", IMC_ERROR);
         return IMC_EFAIL;
     }
@@ -161,7 +161,6 @@ static uint8_t _imc_recon_up(
  * @param curr_scanline The scanline being reconstructed
  * @param n_channels The number of channels / samples per pixel
  * @param idx An index applied to curr_scanline to retrieve the current byte
- * @param is_first Boolean indicating if the current byte resides within the first pixel of the scanline
  * @returns The reconstructed byte for curr_scanline[idx]
  */
 static uint8_t _imc_recon_avg(
@@ -239,7 +238,7 @@ static uint8_t _imc_recon_paeth(
  * @param The output location for chunk information
  * @returns IMC_EFAULT if the function fails to allocate memory for chunk data, otherwise IMC_EOK
  */
-static ImcError_t _imc_read_chunk(const PngHndl_t *png, Chunk_t *chunk) {
+static ImcError_t _imc_read_chunk(const PngHndl_t* const png, Chunk_t *chunk) {
     /*** Chunk length ***/
 
     fread((void*)&chunk->length, sizeof(chunk->length), 1, png->fp);
@@ -281,7 +280,7 @@ static ImcError_t _imc_read_chunk(const PngHndl_t *png, Chunk_t *chunk) {
  * @returns IMC_EINVAL if the chunk is NULL, otherwise IMC_EOK
  */
 static ImcError_t _imc_destroy_chunk_data(Chunk_t *chunk) {
-    if (!chunk) {
+    if (chunk == NULL) {
         IMC_LOG("Attempted double free on chunk", IMC_WARNING);
         return IMC_EINVAL;
     }
@@ -301,7 +300,7 @@ static ImcError_t _imc_destroy_chunk_data(Chunk_t *chunk) {
  * @param The output location for the converted chunk data
  * @warning May fail if PNG ever supports compression methods beyond 0 (deflate) or filter methods beyond 0
  */
-static void _imc_chunk_to_ihdr(const Chunk_t *chunk, Ihdr_t *ihdr) {
+static void _imc_chunk_to_ihdr(const Chunk_t* const chunk, Ihdr_t *ihdr) {
     memcpy((void*)ihdr, (void*)chunk->data, sizeof(*ihdr));
     _IMC_FLIP_ENDIAN(&ihdr->width);
     _IMC_FLIP_ENDIAN(&ihdr->height);
@@ -311,18 +310,18 @@ static void _imc_chunk_to_ihdr(const Chunk_t *chunk, Ihdr_t *ihdr) {
     switch (ihdr->color_type) {
         case NONE:
             IMC_LOG("GREYSCALE not implemented", IMC_ERROR);
-            assert(false);
+            exit(EXIT_FAILURE);
             break;
         case COLOR:
             ihdr->n_channels = 3;
             break;
         case ALPHA:
             IMC_LOG("ALPHA not implemented", IMC_ERROR);
-            assert(false);
+            exit(EXIT_FAILURE);
             break;
         case (PALETTE | COLOR):
             IMC_LOG("(PALETTE | COLOR) not implemented", IMC_ERROR);
-            assert(false);
+            exit(EXIT_FAILURE);
             break;
         case (COLOR | ALPHA):
             ihdr->n_channels = 4;
@@ -378,7 +377,7 @@ static void _imc_print_ihdr_info(const Ihdr_t ihdr) {
  * @param idat The IDAT struct onto which the chunk shall be appended
  * @returns IMC_EFAULT if reallocation of IDAT's data fails, otherwise returns IMC_EOK
  */
-static ImcError_t _imc_append_idat(const Chunk_t *chunk, Idat_t *idat) {
+static ImcError_t _imc_append_idat(const Chunk_t* const chunk, Idat_t *idat) {
     idat->length += chunk->length;
     idat->data = realloc(idat->data, idat->length);
     if (idat->data == NULL) {
@@ -404,7 +403,7 @@ static ImcError_t _imc_decompress_idat(
     const Idat_t *idat,
     uint8_t **decomp_buf
 ) {
-    int res;
+    int status;
     z_stream stream;
     uint8_t n_channels;
     size_t scanline_len, decomp_len;
@@ -426,8 +425,8 @@ static ImcError_t _imc_decompress_idat(
     stream.avail_in = 0;
     stream.next_in  = Z_NULL;
 
-    res = inflateInit(&stream);
-    if (res != Z_OK) {
+    status = inflateInit(&stream);
+    if (status != Z_OK) {
         IMC_LOG("Failed to initialize decompression stream", IMC_ERROR);
         free(*decomp_buf);
         *decomp_buf = NULL;
@@ -444,8 +443,8 @@ static ImcError_t _imc_decompress_idat(
             stream.avail_out = decomp_len;
             stream.next_out  = *decomp_buf;
 
-            res = inflate(&stream, Z_NO_FLUSH);
-            switch (res) {
+            status = inflate(&stream, Z_NO_FLUSH);
+            switch (status) {
                 case Z_NEED_DICT:
                 case Z_DATA_ERROR:
                 case Z_MEM_ERROR:
@@ -455,15 +454,15 @@ static ImcError_t _imc_decompress_idat(
                     (void)inflateEnd(&stream);
                     free(*decomp_buf);
                     *decomp_buf = NULL;
-                    return res;
+                    return status;
                 }
             }
         } while (stream.avail_out == 0);
-    } while (res != Z_STREAM_END);
+    } while (status != Z_STREAM_END);
 
     /* Cleanup */
     (void)inflateEnd(&stream);
-    return (res == Z_STREAM_END) ? IMC_EOK : IMC_EFAIL;
+    return (status == Z_STREAM_END) ? IMC_EOK : IMC_EFAIL;
 }
 
 /**
@@ -475,13 +474,12 @@ static ImcError_t _imc_decompress_idat(
  * @returns An ImcError_t indicating the exit status code
  */
 static ImcError_t _imc_reconstruct_idat(
-    const Ihdr_t *ihdr,
+    const Ihdr_t* const ihdr,
     uint8_t *decomp_buf,
     Pixmap_t *pixmap
 ) {
-    int res;
-    size_t x, scanline_len;
-    size_t decomp_off;
+    int status;
+    size_t x, scanline_len, decomp_off;
     uint8_t fm, n_channels;
     uint8_t *curr_scanline = NULL;
     uint8_t *prev_scanline = NULL;
@@ -612,47 +610,6 @@ static IMC_Error _imc_process_next_chunk(png_hndl_t png, chunk_t *chunk) {
 }
 */
 
-/**
- * @brief Outputs a PPM file containing the pixmap's data.
- * @since 15-01-2024
- * @param fname The name of the output file
- * @param pixmap A pixmap_t struct containing the data to be written to the PPM file
- */
-static void _write_ppm_file(const Ihdr_t * restrict ihdr, const char *fname, const Pixmap_t pixmap) {
-    Rgb_t bg_col = (Rgb_t){ 255, 255, 255 };
-    size_t x, y, bpp, scanline_len;
-    FILE *fp = NULL;
-
-    bpp = (size_t)powf(2.0f, ihdr->bit_depth) - 1.0f;
-    scanline_len = pixmap.width / ihdr->n_channels;
-    fp = fopen(fname, "wb");
-
-    /* Header */
-    fputs("P6\n", fp);
-    fprintf(fp, "%ld %ld\n", scanline_len, pixmap.height);
-    fprintf(fp, "%ld\n", bpp);
-
-    /* Data */
-    for (y = 0; y < pixmap.height; ++y) {
-        for (x = 0; x < scanline_len; ++x) {
-            if (ihdr->color_type == COLOR) {
-                Rgb_t rgb = ((Rgb_t*)pixmap.data)[(y * scanline_len) + x];
-                fputc(rgb.r, fp);
-                fputc(rgb.g, fp);
-                fputc(rgb.b, fp);
-            } else if (ihdr->color_type == (COLOR | ALPHA)) {
-                Rgba_t rgba = ((Rgba_t*)pixmap.data)[(y * scanline_len) + x];
-                Rgb_t rgb = imc_alpha_blend((Rgb_t){ rgba.r, rgba.g, rgba.b }, rgba.a, bg_col);
-                fputc(rgb.r, fp);
-                fputc(rgb.g, fp);
-                fputc(rgb.b, fp);
-            }
-        }
-    }
-
-    fclose(fp);
-}
-
 /*
  * ===============================
  *       Public Functions
@@ -665,18 +622,18 @@ static void _write_ppm_file(const Ihdr_t * restrict ihdr, const char *fname, con
  * @param path An absolute or relative path to the PNG file
  * @returns A png_hndl_t struct which can be passed to other functions of the library
  */
-PngHndl_t *imc_open_png(const char *path) {
+PngHndl_t *imc_open_png(const char* const path) {
     PngHndl_t *png = NULL;
     FILE *fp = NULL;
 
     png = malloc(sizeof(PngHndl_t));
-    if (!png) {
+    if (png == NULL) {
         IMC_LOG("Failed to allocate memory for png", IMC_ERROR);
         return NULL;
     }
 
     fp = fopen(path, "r+");
-    if (!fp) {
+    if (fp == NULL) {
         IMC_LOG("Failed to open file", IMC_ERROR);
         return NULL;
     }
@@ -684,7 +641,7 @@ PngHndl_t *imc_open_png(const char *path) {
     png->fp = fp;
     png->size = _imc_get_file_size(fp);
     png->data = malloc(png->size);
-    if (!png->data) {
+    if (png->data == NULL) {
         IMC_LOG("Failed to allocate memory for png data", IMC_ERROR);
         return NULL;
     }
@@ -703,13 +660,19 @@ PngHndl_t *imc_open_png(const char *path) {
  * @param png A handle to the png file obtained via imc_open_png()
  * @returns A Pixmap_t structure containing the raw PNG pixel data
  */
-Pixmap_t imc_parse_png(PngHndl_t *png) {
+Pixmap_t *imc_parse_png(PngHndl_t *png) {
     ImcError_t status;
     Chunk_t chunk = { 0 };
     Ihdr_t  ihdr  = { 0 };
     Idat_t  idat  = { 0 };
-    Pixmap_t pixmap = { 0 };
+    Pixmap_t *pixmap = NULL;
     uint8_t *decomp_buf = NULL;
+
+    pixmap = malloc(sizeof(Pixmap_t));
+    if (pixmap == NULL) {
+        IMC_LOG("Failed to allocate memory for Pixmap_t", IMC_ERROR);
+        return NULL;
+    }
 
     /* Read PNG IHDR chunk */
     _imc_read_chunk(png, &chunk);
@@ -739,8 +702,10 @@ Pixmap_t imc_parse_png(PngHndl_t *png) {
     }
 
     _imc_decompress_idat(&ihdr, &idat, &decomp_buf);
-    _imc_reconstruct_idat(&ihdr, decomp_buf, &pixmap);
+    _imc_reconstruct_idat(&ihdr, decomp_buf, pixmap);
 
+    pixmap->n_channels = ihdr.n_channels;
+    pixmap->bit_depth = ihdr.bit_depth;
     free(idat.data);
 
     return pixmap;
@@ -755,7 +720,7 @@ Pixmap_t imc_parse_png(PngHndl_t *png) {
 ImcError_t imc_close_png(PngHndl_t *png) {
     int res;
 
-    if (!png) {
+    if (png == NULL) {
         IMC_LOG("Attempted double free on PNG handle", IMC_WARNING);
         return IMC_EFAULT;
     }

@@ -95,9 +95,9 @@ typedef struct {
  * Truecolor + alpha   6             8, 16           Each pixel is an RGB triple followed by alpha sample
  */
 typedef enum {
-    PALETTE = 1,
-    COLOR   = 2,
-    ALPHA   = 4
+    PALETTE = 0x01,
+    COLOR   = 0x02,
+    ALPHA   = 0x04
 } ColorType_t;
 
 typedef struct {
@@ -181,9 +181,9 @@ typedef uint8_t (*recon_func)(
 
 /* Forward function declarations */
 
-PngHndl_t*      imc_open_png(const char *path);
+PngHndl_t      *imc_open_png(const char* const path);
 ImcError_t      imc_close_png(PngHndl_t *png);
-Pixmap_t        imc_parse_png(PngHndl_t *png);
+Pixmap_t       *imc_parse_png(PngHndl_t *png);
 ImcError_t      imc_destroy_png(PngHndl_t *png);
 
 #ifdef __cplusplus

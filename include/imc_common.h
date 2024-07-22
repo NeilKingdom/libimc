@@ -53,6 +53,11 @@ static inline float imc_lerp(const float a, const float b, const float t) {
     return a + t * (b - a);
 }
 
+__attribute__((always_inline))
+static inline float imc_clamp(const float min, const float max, const float x) {
+    return (x < min) ? min : ((x > max) ? max : x);
+}
+
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
