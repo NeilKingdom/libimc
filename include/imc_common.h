@@ -50,7 +50,7 @@ typedef enum {
 
 __attribute__((always_inline))
 static inline float imc_lerp(const float a, const float b, const float t) {
-    return a + t * (b - a);
+    return a * (1.0 - t) + (b * t);
 }
 
 __attribute__((always_inline))

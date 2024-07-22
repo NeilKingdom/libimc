@@ -20,6 +20,7 @@ ImcError_t _imc_pixmap_downscale_width(
     Rgb_t *p_rgb = NULL;
 
     tmp = *pixmap;
+    /* TODO: Do I include bitdepth here? */
     tmp.width = width * pixmap->n_channels;
     tmp.data = malloc(tmp.width * tmp.height);
     if (tmp.data == NULL) {
@@ -28,7 +29,6 @@ ImcError_t _imc_pixmap_downscale_width(
     }
 
     scanline_len = tmp.width / tmp.n_channels;
-
     for (y = 0; y < tmp.height; ++y) {
         for (x = 0; x < scanline_len; ++x) {
             tx = (float)x / (float)scanline_len;
@@ -81,7 +81,6 @@ ImcError_t _imc_pixmap_downscale_height(
     }
 
     scanline_len = tmp.width / tmp.n_channels;
-
     for (y = 0; y < tmp.height; ++y) {
         for (x = 0; x < scanline_len; ++x) {
             tx = (float)x / (float)scanline_len;
@@ -188,6 +187,15 @@ Rgba_t imc_pixmap_sample(Pixmap_t *pixmap, const float x, const float y) {
     return rgba;
 }
 
+/**
+ * @brief Scales an image contained in pixmap to the new size specified by "width" and "height".
+ * @since 21-07-2024
+ * @param pixmap The pixmap that shall be resized to match "width" and "height"
+ * @param width The new width that pixmap shall be scaled to
+ * @param height The new height that pixmap shall be scaled to
+ * @param sm The scaling method (only used when upscaling)
+ * @returns An ImcError_t representing the exit status code
+ */
 ImcError_t imc_pixmap_scale(
     Pixmap_t *pixmap,
     const size_t width,
@@ -223,35 +231,81 @@ ImcError_t imc_pixmap_scale(
     return IMC_EOK;
 }
 
-/* TODO: Can we make this work for RGB888 as well? */
+/**
+ * @brief Converts the image stored in pixmap to grayscale.
+ * @since 21-07-2024
+ * @param pixmap The pixmap that shall be converted to grayscale
+ * @returns An ImcError_t representing the exit status code
+ */
 ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
-    int x, y;
+    int x, y, a;
     size_t scanline_len;
 
+    Pixmap_t tmp;
+    Rgb_t rgb;
+    Rgba_t rgba;
+
+    /* Weights used to calculate alpha */
     const float r_weight = 0.3f;
     const float g_weight = 0.59f;
     const float b_weight = 0.11f;
 
-    scanline_len = pixmap->width / pixmap->n_channels;
-
-    for (y = 0; y < pixmap->height; ++y) {
-        for (x = 0; x < scanline_len; ++x) {
-            Rgba_t *rgba = &((Rgba_t*)pixmap->data)[(y * scanline_len) + x];
-            rgba->r = 0.0f;
-            rgba->g = 0.0f;
-            rgba->b = 0.0f;
-            rgba->a = 255 - ((r_weight * rgba->r) + (g_weight * rgba->g) + (b_weight * rgba->b));
+    tmp = *pixmap;
+    tmp.offset = 0;
+    if (pixmap->n_channels < 4) {
+        tmp.width /= tmp.n_channels;
+        tmp.n_channels = 4;
+        tmp.width *= tmp.n_channels;
+        /* TODO: Do I include bitdepth here? */
+        tmp.data = malloc(tmp.width * tmp.height);
+        if (tmp.data == NULL) {
+            IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
+            return IMC_EFAULT;
         }
     }
 
+    scanline_len = pixmap->width / pixmap->n_channels;
+    for (y = 0; y < tmp.height; ++y) {
+        for (x = 0; x < scanline_len; ++x) {
+            if (pixmap->n_channels == 3) {
+                rgb = ((Rgb_t*)pixmap->data)[(y * scanline_len) + x];
+                rgba = (Rgba_t){ rgb.r, rgb.g, rgb.b, 255 };
+            } else if (pixmap->n_channels == 4) {
+                rgba = ((Rgba_t*)pixmap->data)[(y * scanline_len) + x];
+            }
+
+            a = 255 - ((r_weight * rgba.r) + (g_weight * rgba.g) + (b_weight * rgba.b));
+            rgba = (Rgba_t){ 0.0f, 0.0f, 0.0f, a };
+            ((Rgba_t*)tmp.data)[tmp.offset++] = rgba;
+        }
+    }
+
+    free(pixmap->data);
+    *pixmap = tmp;
+
+    return IMC_EOK;
+}
+
+/**
+ * @brief Transforms the image stored in pixmap to be monochrome according the the value of "luma_threshold".
+ * @since 21-07-2024
+ * @param pixmap The pixmap to be converted to monochrome
+ * @param luma_threshold A normalized threshold between 0.0f-1.0f representing the cutoff between black and white
+ * @returns An ImcError_t representing the exit status code
+ */
+ImcError_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold) {
     return IMC_EOK;
 }
 
 /**
  * @brief Outputs pixmap image as ASCII art to the file specified by "fname".
  * In order to use this function, it is advised that you first make your font as small as possible.
- * To get the number of columns/rows of your terminal, use tput lines and tput cols. Run cat <file>
+ * To get the number of columns/rows of your terminal, use tput lines and tput cols. Run cat <fname>
  * to print the contents to the TTY.
+ * @warning Results will vary depending upon whether you're using RGB or RGBA. This is because RGB uses the
+ * color channels to determine luma, whereas, RGBA uses the alpha channel. RGBA cannot use the color channels
+ * since that would make this function incompatible with imc_pixmap_to_grayscale() or
+ * imc_pixmap_to_monochrome(), which strip the color data.
  * @since 21-07-2024
  * @param pixmap A Pixmap_t containing the image that shall be converted into ASCII art
  * @param fname The name of the file that the ASCII art shall be output to
@@ -259,8 +313,8 @@ ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
  */
 ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     int x, y, luma_idx;
-    float luma, r_norm, g_norm, b_norm;
     size_t scanline_len;
+    float luma, r_norm, g_norm, b_norm;
 
     Rgb_t rgb;
     Rgba_t rgba;
@@ -268,6 +322,7 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     FILE *fp = NULL;
 
     /* Weights used to calculate perceived luma */
+    const float c = 0.193f;
     const float r_weight = 0.2126f;
     const float g_weight = 0.7152f;
     const float b_weight = 0.0722f;
@@ -281,25 +336,24 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     }
 
     scanline_len = pixmap->width / pixmap->n_channels;
-
     for (y = 0; y < pixmap->height; ++y) {
         for (x = 0; x < scanline_len; ++x) {
             if (pixmap->n_channels == 3) {
                 rgb = ((Rgb_t*)pixmap->data)[(y * scanline_len) + x];
+                r_norm = (float)rgb.r / 255.0f;
+                g_norm = (float)rgb.g / 255.0f;
+                b_norm = (float)rgb.b / 255.0f;
+
+                luma = (r_weight * r_norm) + (g_weight * g_norm) + (b_weight * b_norm);
+                luma_idx = roundf(luma * 10) - 1;
             } else if (pixmap->n_channels == 4) {
                 rgba = ((Rgba_t*)pixmap->data)[(y * scanline_len) + x];
-                rgb = (Rgb_t){ rgba.r, rgba.g, rgba.b };
+
+                luma = ((float)rgba.a / 255.0f) + c;
+                luma_idx = 10 - (roundf(luma * 10) - 1);
             }
 
-            r_norm = (float)rgb.r / 255.0f;
-            g_norm = (float)rgb.g / 255.0f;
-            b_norm = (float)rgb.b / 255.0f;
-
-            luma = (r_weight * r_norm) + (g_weight * g_norm) + (b_weight * b_norm);
-            luma_idx = roundf(luma * 10) - 1;
-            luma_idx = imc_clamp(0, 9, luma_idx);
-
-            tmp.data[(y * scanline_len) + x] = ascii_luma[luma_idx];
+            tmp.data[(y * scanline_len) + x] = ascii_luma[(int)imc_clamp(0, 9, luma_idx)];
         }
     }
 
@@ -323,15 +377,13 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     return IMC_EOK;
 }
 
-ImcError_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold) {
-    return IMC_EOK;
-}
-
 /**
- * @brief Outputs a PPM file containing the pixmap's data.
+ * @brief Writes the image data in pixmap in PPM format (PPM does not support the alpha channel).
  * @since 15-01-2024
- * @param fname The name of the output file
  * @param pixmap A pixmap_t struct containing the data to be written to the PPM file
+ * @param fname The name of the output file
+ * @param bg_col The background color to be blended in the case that pixbuf contains alpha data
+ * @returns An ImcError_t representing the exit status code
  */
 ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rgb_t bg_col) {
     Rgb_t rgb;
@@ -373,3 +425,10 @@ ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rg
     return IMC_EOK;
 }
 
+ImcError_t  imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
+    return IMC_EOK;
+}
+
+ImcError_t  imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
+    return IMC_EOK;
+}
