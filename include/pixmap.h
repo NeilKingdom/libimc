@@ -24,16 +24,15 @@ typedef enum {
 
 /* Forward function declarations */
 
-/* TODO: Change naming to imc_pixmap_thing */
-/* TODO: All functions should return ImcError_t and modify the Pixmap_t pointer */
-
-Rgb_t       imc_alpha_blend(const Rgb_t rgb, const float alpha, const Rgb_t bg_col);
-Rgba_t      imc_sample_pixmap(const Pixmap_t pixmap, const float x, const float y);
-ImcError_t  imc_scale_pixmap(Pixmap_t *pixmap, const size_t width, const size_t height, const ScaleMethod_t sm);
-Pixmap_t    imc_make_pixmap_grayscale(const Pixmap_t pixmap);
-Pixmap_t    imc_make_pixmap_ascii_art(Pixmap_t *pixmap);
-Pixmap_t    imc_make_pixmap_monochrome(const Pixmap_t pixmap, const float luma_threshold);
-void        imc_pixmap_to_ppm(const Pixmap_t pixmap, const char* const fname);
+Rgb_t       imc_blend_alpha(const Rgb_t fg_col, const Rgb_t bg_col, const float alpha);
+Rgba_t      imc_pixmap_sample(Pixmap_t *pixmap, const float x, const float y);
+ImcError_t  imc_pixmap_scale(Pixmap_t *pixmap, const size_t width, const size_t height, const ScaleMethod_t sm);
+ImcError_t  imc_pixmap_to_grayscale(Pixmap_t *pixmap);
+ImcError_t  imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold);
+ImcError_t  imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname);
+ImcError_t  imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rgb_t bg_col);
+ImcError_t  imc_pixmap_rotate_cw(Pixmap_t *pixmap);
+ImcError_t  imc_pixmap_rotate_ccw(Pixmap_t *pixmap);
 
 #ifdef __cplusplus
 }

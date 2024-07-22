@@ -487,6 +487,8 @@ static ImcError_t _imc_reconstruct_idat(
 
     pixmap->width = scanline_len = (ihdr->n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3;
     pixmap->height = ihdr->height;
+    pixmap->bit_depth = ihdr->bit_depth;
+    pixmap->n_channels = ihdr->n_channels;
     pixmap->data = malloc(pixmap->width * pixmap->height);
     if (pixmap->data == NULL) {
         IMC_LOG("Failed to allocate memory for pixmap->data", IMC_ERROR);
@@ -704,10 +706,7 @@ Pixmap_t *imc_parse_png(PngHndl_t *png) {
     _imc_decompress_idat(&ihdr, &idat, &decomp_buf);
     _imc_reconstruct_idat(&ihdr, decomp_buf, pixmap);
 
-    pixmap->n_channels = ihdr.n_channels;
-    pixmap->bit_depth = ihdr.bit_depth;
     free(idat.data);
-
     return pixmap;
 }
 
