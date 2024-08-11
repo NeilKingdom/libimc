@@ -624,7 +624,7 @@ static IMC_Error _imc_process_next_chunk(png_hndl_t png, chunk_t *chunk) {
  * @param path An absolute or relative path to the PNG file
  * @returns A png_hndl_t struct which can be passed to other functions of the library
  */
-PngHndl_t *imc_open_png(const char* const path) {
+PngHndl_t *imc_png_open(const char* const path) {
     PngHndl_t *png = NULL;
     FILE *fp = NULL;
 
@@ -662,7 +662,7 @@ PngHndl_t *imc_open_png(const char* const path) {
  * @param png A handle to the png file obtained via imc_open_png()
  * @returns A Pixmap_t structure containing the raw PNG pixel data
  */
-Pixmap_t *imc_parse_png(PngHndl_t *png) {
+Pixmap_t *imc_png_parse(PngHndl_t *png) {
     ImcError_t status;
     Chunk_t chunk = { 0 };
     Ihdr_t  ihdr  = { 0 };
@@ -716,7 +716,7 @@ Pixmap_t *imc_parse_png(PngHndl_t *png) {
  * @param png A PngHndl_t pointer refererencing the PNG file to be closed
  * @returns An ImcError_t indicating the exit status of the operation
  */
-ImcError_t imc_close_png(PngHndl_t *png) {
+ImcError_t imc_png_close(PngHndl_t *png) {
     int res;
 
     if (png == NULL) {

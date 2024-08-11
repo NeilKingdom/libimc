@@ -181,10 +181,9 @@ typedef uint8_t (*recon_func)(
 
 /* Forward function declarations */
 
-PngHndl_t      *imc_open_png(const char* const path);
-ImcError_t      imc_close_png(PngHndl_t *png);
-Pixmap_t       *imc_parse_png(PngHndl_t *png);
-ImcError_t      imc_destroy_png(PngHndl_t *png);
+PngHndl_t      *imc_png_open(const char* const path);
+ImcError_t      imc_png_close(PngHndl_t *png);
+Pixmap_t       *imc_png_parse(PngHndl_t *png);
 
 #ifdef __cplusplus
 }
