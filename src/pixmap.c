@@ -1,3 +1,11 @@
+/**
+ * @file pixmap.c
+ * @author Neil Kingdom
+ * @since 17-09-2024
+ * @version 1.0
+ * @brief Provides public-facing APIs for interacting with Pixmap_t objects.
+ */
+
 #include "pixmap.h"
 
 /*
@@ -6,7 +14,7 @@
  * ===============================
  */
 
-ImcError_t _imc_pixmap_downscale_width(
+static ImcError_t _imc_pixmap_downscale_width(
     Pixmap_t *pixmap,
     const size_t width
 ) {
@@ -51,7 +59,7 @@ ImcError_t _imc_pixmap_downscale_width(
     return IMC_EOK;
 }
 
-ImcError_t _imc_pixmap_upscale_width(
+static ImcError_t _imc_pixmap_upscale_width(
     Pixmap_t *pixmap,
     const size_t width,
     const ScaleMethod_t sm
@@ -59,7 +67,7 @@ ImcError_t _imc_pixmap_upscale_width(
     return IMC_EOK;
 }
 
-ImcError_t _imc_pixmap_downscale_height(
+static ImcError_t _imc_pixmap_downscale_height(
     Pixmap_t *pixmap,
     const size_t height
 ) {
@@ -103,7 +111,7 @@ ImcError_t _imc_pixmap_downscale_height(
     return IMC_EOK;
 }
 
-ImcError_t _imc_pixmap_upscale_height(
+static ImcError_t _imc_pixmap_upscale_height(
     Pixmap_t *pixmap,
     const size_t height,
     const ScaleMethod_t sm
@@ -119,11 +127,11 @@ ImcError_t _imc_pixmap_upscale_height(
 
 /* TODO: Do we need to clamp alpha? */
 /**
- * @brief Blends "fg_col" with "bg_col" accounting for the opacity given by "alpha".
+ * @brief Blends __fg_col__ with __bg_col__ accounting for the opacity given by __alpha__.
  * @since 15-01-2024
- * @param fg_col The foreground pixel's color
- * @param bg_col The background pixel's color
- * @param alpha The opacity/alpha value that will be factored when blending
+ * @param[in] fg_col The foreground pixel's color
+ * @param[in] bg_col The background pixel's color
+ * @param[in] alpha The opacity/alpha value that will be factored when blending
  * @returns A new Rgb_t containing the blended rgb pixel value
  */
 Rgb_t imc_blend_alpha(const Rgb_t fg_col, const Rgb_t bg_col, const float alpha) {
@@ -305,7 +313,7 @@ ImcError_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold
  * @warning Results will vary depending upon whether you're using RGB or RGBA. This is because RGB uses the
  * color channels to determine luma, whereas, RGBA uses the alpha channel. RGBA cannot use the color channels
  * since that would make this function incompatible with imc_pixmap_to_grayscale() or
- * imc_pixmap_to_monochrome(), which strip the color data.
+ * imc_pixmap_to_monochrome(), which strips the color data.
  * @since 21-07-2024
  * @param pixmap A Pixmap_t containing the image that shall be converted into ASCII art
  * @param fname The name of the file that the ASCII art shall be output to
@@ -425,10 +433,86 @@ ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rg
     return IMC_EOK;
 }
 
-ImcError_t  imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
+ImcError_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
+    Rgb_t rgb;
+    Rgba_t rgba;
+    Pixmap_t tmp;
+    size_t x1, x2, y1, y2, scanline_len1, scanline_len2;
+
+    tmp = *pixmap;
+    tmp.width = pixmap->height * pixmap->n_channels;
+    tmp.height = pixmap->width / pixmap->n_channels;
+    tmp.data = malloc(tmp.width * tmp.height);
+    if (tmp.data == NULL) {
+        IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
+        return IMC_EFAULT;
+    }
+
+    scanline_len1 = tmp.width / tmp.n_channels;
+    scanline_len2 = pixmap->width / pixmap->n_channels;
+    for (y2 = 0; y2 < pixmap->height; ++y2) {
+        for (x2 = 0; x2 < scanline_len2; ++x2) {
+            x1 = -y2;
+            y1 = x2;
+
+            if ((y1 * scanline_len1) + x1 >= (scanline_len1 * tmp.height)) {
+                continue;
+            }
+
+            if (tmp.n_channels == 3) {
+                ((Rgb_t*)tmp.data)[(y1 * scanline_len1) + x1]
+                    = ((Rgb_t*)pixmap->data)[(y2 * scanline_len2) + x2];
+            } else if (tmp.n_channels == 4) {
+                ((Rgba_t*)tmp.data)[(y1 * scanline_len1) + x1]
+                    = ((Rgba_t*)pixmap->data)[(y2 * scanline_len2) + x2];
+            }
+        }
+    }
+
+    free(pixmap->data);
+    *pixmap = tmp;
+
     return IMC_EOK;
 }
 
-ImcError_t  imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
+ImcError_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
+    Rgb_t rgb;
+    Rgba_t rgba;
+    Pixmap_t tmp;
+    size_t x1, x2, y1, y2, scanline_len1, scanline_len2;
+
+    tmp = *pixmap;
+    tmp.width = pixmap->height * pixmap->n_channels;
+    tmp.height = pixmap->width / pixmap->n_channels;
+    tmp.data = malloc(tmp.width * tmp.height);
+    if (tmp.data == NULL) {
+        IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
+        return IMC_EFAULT;
+    }
+
+    scanline_len1 = tmp.width / tmp.n_channels;
+    scanline_len2 = pixmap->width / pixmap->n_channels;
+    for (y2 = 0; y2 < pixmap->height; ++y2) {
+        for (x2 = 0; x2 < scanline_len2; ++x2) {
+            x1 = y2;
+            y1 = -x2 + scanline_len2;
+
+            if ((y1 * scanline_len1) + x1 >= (scanline_len1 * tmp.height)) {
+                continue;
+            }
+
+            if (tmp.n_channels == 3) {
+                ((Rgb_t*)tmp.data)[(y1 * scanline_len1) + x1]
+                    = ((Rgb_t*)pixmap->data)[(y2 * scanline_len2) + x2];
+            } else if (tmp.n_channels == 4) {
+                ((Rgba_t*)tmp.data)[(y1 * scanline_len1) + x1]
+                    = ((Rgba_t*)pixmap->data)[(y2 * scanline_len2) + x2];
+            }
+        }
+    }
+
+    free(pixmap->data);
+    *pixmap = tmp;
+
     return IMC_EOK;
 }

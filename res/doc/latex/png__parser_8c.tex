@@ -1,0 +1,555 @@
+\doxysection{/home/neil/devel/projects/libimc/src/png\+\_\+parser.c File Reference}
+\hypertarget{png__parser_8c}{}\label{png__parser_8c}\index{/home/neil/devel/projects/libimc/src/png\_parser.c@{/home/neil/devel/projects/libimc/src/png\_parser.c}}
+
+
+Contains the internal functions necessary for parsing a PNG file.  
+
+
+{\ttfamily \#include "{}png\+\_\+parser.\+h"{}}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{png__parser_8c_aa903110fc275aa0eddea5c721ec8cb49}{\+\_\+\+IMC\+\_\+\+FLIP\+\_\+\+ENDIAN}}(data)
+\begin{DoxyCompactList}\small\item\em Flip the endianness of a given primitive. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+static bool \mbox{\hyperlink{png__parser_8c_a52fad01fc8f0e275665f1e7cc3b0526a}{\+\_\+imc\+\_\+chunk\+\_\+is\+\_\+type}} (const Chunk\+\_\+t \texorpdfstring{$\ast$}{*}const chunk, const char \texorpdfstring{$\ast$}{*}const type)
+\begin{DoxyCompactList}\small\item\em Checks to see if a chunk matches the given type. \end{DoxyCompactList}\item 
+static size\+\_\+t \mbox{\hyperlink{png__parser_8c_afb1f588736fe4ca888aeef3996a02e9c}{\+\_\+imc\+\_\+get\+\_\+file\+\_\+size}} (FILE \texorpdfstring{$\ast$}{*}fp)
+\begin{DoxyCompactList}\small\item\em Get the size of a file in bytes. \end{DoxyCompactList}\item 
+static Imc\+Error\+\_\+t \mbox{\hyperlink{png__parser_8c_add8bdc400ca2d462767c4a177378afe7}{\+\_\+imc\+\_\+validate\+\_\+png\+\_\+ihdr}} (const Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*}const png)
+\begin{DoxyCompactList}\small\item\em Validate the IHDR chunk of the PNG and seek past it. \end{DoxyCompactList}\item 
+static uint8\+\_\+t \mbox{\hyperlink{png__parser_8c_a68b06bc1c8c8a214d41e6f7fb4339c42}{\+\_\+imc\+\_\+recon\+\_\+none}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}prev\+\_\+scanline, uint8\+\_\+t \texorpdfstring{$\ast$}{*}curr\+\_\+scanline, const uint8\+\_\+t n\+\_\+channels, const size\+\_\+t idx)
+\begin{DoxyCompactList}\small\item\em IDAT reconstruct method 0 (NONE). \end{DoxyCompactList}\item 
+static uint8\+\_\+t \mbox{\hyperlink{png__parser_8c_a406cc97d39a7ab1517d613e872a379df}{\+\_\+imc\+\_\+recon\+\_\+sub}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}prev\+\_\+scanline, uint8\+\_\+t \texorpdfstring{$\ast$}{*}curr\+\_\+scanline, const uint8\+\_\+t n\+\_\+channels, const size\+\_\+t idx)
+\begin{DoxyCompactList}\small\item\em IDAT reconstruct method 1 (SUB). \end{DoxyCompactList}\item 
+static uint8\+\_\+t \mbox{\hyperlink{png__parser_8c_ab9304047801d3996d04be7ddaf39cfbd}{\+\_\+imc\+\_\+recon\+\_\+up}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}prev\+\_\+scanline, uint8\+\_\+t \texorpdfstring{$\ast$}{*}curr\+\_\+scanline, const uint8\+\_\+t n\+\_\+channels, const size\+\_\+t idx)
+\begin{DoxyCompactList}\small\item\em IDAT reconstruct method 2 (UP). \end{DoxyCompactList}\item 
+static uint8\+\_\+t \mbox{\hyperlink{png__parser_8c_a5ac64eed35a865248545d67e4db6b54b}{\+\_\+imc\+\_\+recon\+\_\+avg}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}prev\+\_\+scanline, uint8\+\_\+t \texorpdfstring{$\ast$}{*}curr\+\_\+scanline, const uint8\+\_\+t n\+\_\+channels, const size\+\_\+t idx)
+\begin{DoxyCompactList}\small\item\em IDAT reconstruct method 3 (AVERAGE). \end{DoxyCompactList}\item 
+static uint32\+\_\+t \mbox{\hyperlink{png__parser_8c_a0b07cd7e95a47da0b6211b85562f31b0}{\+\_\+imc\+\_\+peath\+\_\+predictor}} (const uint8\+\_\+t a, const uint8\+\_\+t b, const uint8\+\_\+t c)
+\begin{DoxyCompactList}\small\item\em The paeth predictor algorithm used in filter type 4\+: PAETH. \end{DoxyCompactList}\item 
+static uint8\+\_\+t \mbox{\hyperlink{png__parser_8c_aaf448bb98c584d72e447bfdd70f47430}{\+\_\+imc\+\_\+recon\+\_\+paeth}} (uint8\+\_\+t \texorpdfstring{$\ast$}{*}prev\+\_\+scanline, uint8\+\_\+t \texorpdfstring{$\ast$}{*}curr\+\_\+scanline, const uint8\+\_\+t n\+\_\+channels, const size\+\_\+t idx)
+\begin{DoxyCompactList}\small\item\em IDAT reconstruct method 4 (PAETH). \end{DoxyCompactList}\item 
+static Imc\+Error\+\_\+t \mbox{\hyperlink{png__parser_8c_af0cc855d80d961ebaf4b6dcb09a52c68}{\+\_\+imc\+\_\+read\+\_\+chunk}} (const Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*}const png, Chunk\+\_\+t \texorpdfstring{$\ast$}{*}chunk)
+\begin{DoxyCompactList}\small\item\em Read the next chunk from PNG and advance the file pointer. \end{DoxyCompactList}\item 
+static Imc\+Error\+\_\+t \mbox{\hyperlink{png__parser_8c_a01422ecd43f3a32504466198be171dc8}{\+\_\+imc\+\_\+destroy\+\_\+chunk\+\_\+data}} (Chunk\+\_\+t \texorpdfstring{$\ast$}{*}chunk)
+\begin{DoxyCompactList}\small\item\em Frees the data field of chunk. \end{DoxyCompactList}\item 
+static void \mbox{\hyperlink{png__parser_8c_ab65e60fe5695658d31a34aeb678c9dcc}{\+\_\+imc\+\_\+chunk\+\_\+to\+\_\+ihdr}} (const Chunk\+\_\+t \texorpdfstring{$\ast$}{*}const chunk, Ihdr\+\_\+t \texorpdfstring{$\ast$}{*}ihdr)
+\begin{DoxyCompactList}\small\item\em Converts raw chunk data to an ihdr\+\_\+t struct. \end{DoxyCompactList}\item 
+static void \mbox{\hyperlink{png__parser_8c_a8896d49506c0f6b8d86845acf1d5240b}{\+\_\+imc\+\_\+print\+\_\+ihdr\+\_\+info}} (const Ihdr\+\_\+t ihdr)
+\begin{DoxyCompactList}\small\item\em Print IHDR debug information. \end{DoxyCompactList}\item 
+static Imc\+Error\+\_\+t \mbox{\hyperlink{png__parser_8c_af432333965c443a5a25abaf0b4fc0188}{\+\_\+imc\+\_\+append\+\_\+idat}} (const Chunk\+\_\+t \texorpdfstring{$\ast$}{*}const chunk, Idat\+\_\+t \texorpdfstring{$\ast$}{*}idat)
+\begin{DoxyCompactList}\small\item\em Appends the chunk onto the IDAT\textquotesingle{}s data segment. \end{DoxyCompactList}\item 
+static Imc\+Error\+\_\+t \mbox{\hyperlink{png__parser_8c_aab998eb3d37000694aecfbac175a6471}{\+\_\+imc\+\_\+decompress\+\_\+idat}} (const Ihdr\+\_\+t \texorpdfstring{$\ast$}{*}ihdr, const Idat\+\_\+t \texorpdfstring{$\ast$}{*}idat, uint8\+\_\+t \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}decomp\+\_\+buf)
+\begin{DoxyCompactList}\small\item\em Decompresses the IDAT\textquotesingle{}s compressed data stream using the LZ77 algorithm. \end{DoxyCompactList}\item 
+static Imc\+Error\+\_\+t \mbox{\hyperlink{png__parser_8c_ad6e0a2969f17100dd144d6104a3e4c86}{\+\_\+imc\+\_\+reconstruct\+\_\+idat}} (const Ihdr\+\_\+t \texorpdfstring{$\ast$}{*}const ihdr, uint8\+\_\+t \texorpdfstring{$\ast$}{*}decomp\+\_\+buf, Pixmap\+\_\+t \texorpdfstring{$\ast$}{*}pixmap)
+\begin{DoxyCompactList}\small\item\em Reconstructs the IDAT chunk after it\textquotesingle{}s been decompressed. \end{DoxyCompactList}\item 
+Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{png__parser_8c_add1fac2679636c999844841810fee090}{imc\+\_\+png\+\_\+open}} (const char \texorpdfstring{$\ast$}{*}const path)
+\begin{DoxyCompactList}\small\item\em Prepare/open a PNG file for parsing. \end{DoxyCompactList}\item 
+Pixmap\+\_\+t \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{png__parser_8c_afdef5967326e6b4c2781b5f5f9d4688f}{imc\+\_\+png\+\_\+parse}} (Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*}png)
+\begin{DoxyCompactList}\small\item\em Parse a PNG image and return it as a Pixmap\+\_\+t structure. \end{DoxyCompactList}\item 
+Imc\+Error\+\_\+t \mbox{\hyperlink{png__parser_8c_a0b38d5f9ffa3309abfd7cb7e4d8745f6}{imc\+\_\+png\+\_\+close}} (Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*}png)
+\begin{DoxyCompactList}\small\item\em Close the PNG file referenced by "{}png"{}. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Contains the internal functions necessary for parsing a PNG file. 
+
+\begin{DoxyAuthor}{Author}
+Neil Kingdom 
+\end{DoxyAuthor}
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+\begin{DoxyVersion}{Version}
+1.\+0 
+\end{DoxyVersion}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{png__parser_8c_aa903110fc275aa0eddea5c721ec8cb49}\index{png\_parser.c@{png\_parser.c}!\_IMC\_FLIP\_ENDIAN@{\_IMC\_FLIP\_ENDIAN}}
+\index{\_IMC\_FLIP\_ENDIAN@{\_IMC\_FLIP\_ENDIAN}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_IMC\_FLIP\_ENDIAN}{\_IMC\_FLIP\_ENDIAN}}
+{\footnotesize\ttfamily \label{png__parser_8c_aa903110fc275aa0eddea5c721ec8cb49} 
+\#define \+\_\+\+IMC\+\_\+\+FLIP\+\_\+\+ENDIAN(\begin{DoxyParamCaption}\item[{}]{data}{}\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordflow}{do}\ \{\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordtype}{size\_t}\ i;\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ uint8\_t\ *tmp\ =\ alloca(\textcolor{keyword}{sizeof}(*(data)));\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ memcpy((\textcolor{keywordtype}{void}*)tmp,\ (\textcolor{keywordtype}{void}*)(data),\ \textcolor{keyword}{sizeof}(*(data)));\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ for\ (i\ =\ 0;\ i\ <\ \textcolor{keyword}{sizeof}(*(data));\ ++i)\ \{\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ ((uint8\_t*)(data))[i]\ =\ tmp[\textcolor{keyword}{sizeof}(*(data))\ -\/\ i\ -\/\ 1];\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \}\ \(\backslash\)}
+\DoxyCodeLine{\}\ \textcolor{keywordflow}{while}\ (0)}
+
+\end{DoxyCode}
+
+
+Flip the endianness of a given primitive. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{ in}}  & {\em data} & The data whose endianness will be flipped \\
+\hline
+\end{DoxyParams}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{png__parser_8c_af432333965c443a5a25abaf0b4fc0188}\index{png\_parser.c@{png\_parser.c}!\_imc\_append\_idat@{\_imc\_append\_idat}}
+\index{\_imc\_append\_idat@{\_imc\_append\_idat}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_append\_idat()}{\_imc\_append\_idat()}}
+{\footnotesize\ttfamily \label{png__parser_8c_af432333965c443a5a25abaf0b4fc0188} 
+static Imc\+Error\+\_\+t \+\_\+imc\+\_\+append\+\_\+idat (\begin{DoxyParamCaption}\item[{const Chunk\+\_\+t \texorpdfstring{$\ast$}{*}const}]{chunk}{, }\item[{Idat\+\_\+t \texorpdfstring{$\ast$}{*}}]{idat}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Appends the chunk onto the IDAT\textquotesingle{}s data segment. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em chunk} & The chunk that will be appended to the IDAT\textquotesingle{}s data segment \\
+\hline
+{\em idat} & The IDAT struct onto which the chunk shall be appended \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+IMC\+\_\+\+EFAULT if reallocation of IDAT\textquotesingle{}s data fails, otherwise returns IMC\+\_\+\+EOK 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_a52fad01fc8f0e275665f1e7cc3b0526a}\index{png\_parser.c@{png\_parser.c}!\_imc\_chunk\_is\_type@{\_imc\_chunk\_is\_type}}
+\index{\_imc\_chunk\_is\_type@{\_imc\_chunk\_is\_type}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_chunk\_is\_type()}{\_imc\_chunk\_is\_type()}}
+{\footnotesize\ttfamily \label{png__parser_8c_a52fad01fc8f0e275665f1e7cc3b0526a} 
+static bool \+\_\+imc\+\_\+chunk\+\_\+is\+\_\+type (\begin{DoxyParamCaption}\item[{const Chunk\+\_\+t \texorpdfstring{$\ast$}{*}const}]{chunk}{, }\item[{const char \texorpdfstring{$\ast$}{*}const}]{type}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Checks to see if a chunk matches the given type. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em chunk} & The chunk who\textquotesingle{}s type is being checked \\
+\hline
+{\em type} & The type that we\textquotesingle{}re checking for \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+True if the chunk is of type "{}type"{}, or false otherwise 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_ab65e60fe5695658d31a34aeb678c9dcc}\index{png\_parser.c@{png\_parser.c}!\_imc\_chunk\_to\_ihdr@{\_imc\_chunk\_to\_ihdr}}
+\index{\_imc\_chunk\_to\_ihdr@{\_imc\_chunk\_to\_ihdr}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_chunk\_to\_ihdr()}{\_imc\_chunk\_to\_ihdr()}}
+{\footnotesize\ttfamily \label{png__parser_8c_ab65e60fe5695658d31a34aeb678c9dcc} 
+static void \+\_\+imc\+\_\+chunk\+\_\+to\+\_\+ihdr (\begin{DoxyParamCaption}\item[{const Chunk\+\_\+t \texorpdfstring{$\ast$}{*}const}]{chunk}{, }\item[{Ihdr\+\_\+t \texorpdfstring{$\ast$}{*}}]{ihdr}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Converts raw chunk data to an ihdr\+\_\+t struct. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em chunk} & The chunk whos data will be converted to an ihdr\+\_\+t \\
+\hline
+{\em The} & output location for the converted chunk data \\
+\hline
+\end{DoxyParams}
+\begin{DoxyWarning}{Warning}
+May fail if PNG ever supports compression methods beyond 0 (deflate) or filter methods beyond 0 
+\end{DoxyWarning}
+\Hypertarget{png__parser_8c_aab998eb3d37000694aecfbac175a6471}\index{png\_parser.c@{png\_parser.c}!\_imc\_decompress\_idat@{\_imc\_decompress\_idat}}
+\index{\_imc\_decompress\_idat@{\_imc\_decompress\_idat}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_decompress\_idat()}{\_imc\_decompress\_idat()}}
+{\footnotesize\ttfamily \label{png__parser_8c_aab998eb3d37000694aecfbac175a6471} 
+static Imc\+Error\+\_\+t \+\_\+imc\+\_\+decompress\+\_\+idat (\begin{DoxyParamCaption}\item[{const Ihdr\+\_\+t \texorpdfstring{$\ast$}{*}}]{ihdr}{, }\item[{const Idat\+\_\+t \texorpdfstring{$\ast$}{*}}]{idat}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{decomp\+\_\+buf}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Decompresses the IDAT\textquotesingle{}s compressed data stream using the LZ77 algorithm. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em ihdr} & The IHDR information pertaining to the PNG \\
+\hline
+{\em idat} & The IDAT chunk containing the compressed data \\
+\hline
+{\em decomp\+\_\+buf} & A raw buffer into which the decompressed data will be copied \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+IMC\+\_\+\+EFAULT if an allocation fails or IMC\+\_\+\+ERROR for zlib errors, otherwise returns IMC\+\_\+\+EOK 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_a01422ecd43f3a32504466198be171dc8}\index{png\_parser.c@{png\_parser.c}!\_imc\_destroy\_chunk\_data@{\_imc\_destroy\_chunk\_data}}
+\index{\_imc\_destroy\_chunk\_data@{\_imc\_destroy\_chunk\_data}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_destroy\_chunk\_data()}{\_imc\_destroy\_chunk\_data()}}
+{\footnotesize\ttfamily \label{png__parser_8c_a01422ecd43f3a32504466198be171dc8} 
+static Imc\+Error\+\_\+t \+\_\+imc\+\_\+destroy\+\_\+chunk\+\_\+data (\begin{DoxyParamCaption}\item[{Chunk\+\_\+t \texorpdfstring{$\ast$}{*}}]{chunk}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Frees the data field of chunk. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em The} & chunk whos data shall be destroyed \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+IMC\+\_\+\+EINVAL if the chunk is NULL, otherwise IMC\+\_\+\+EOK 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_afb1f588736fe4ca888aeef3996a02e9c}\index{png\_parser.c@{png\_parser.c}!\_imc\_get\_file\_size@{\_imc\_get\_file\_size}}
+\index{\_imc\_get\_file\_size@{\_imc\_get\_file\_size}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_get\_file\_size()}{\_imc\_get\_file\_size()}}
+{\footnotesize\ttfamily \label{png__parser_8c_afb1f588736fe4ca888aeef3996a02e9c} 
+static size\+\_\+t \+\_\+imc\+\_\+get\+\_\+file\+\_\+size (\begin{DoxyParamCaption}\item[{FILE \texorpdfstring{$\ast$}{*}}]{fp}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Get the size of a file in bytes. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em fp} & File handle to the file that we want the size of \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Size of the file pointed to by fp 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_a0b07cd7e95a47da0b6211b85562f31b0}\index{png\_parser.c@{png\_parser.c}!\_imc\_peath\_predictor@{\_imc\_peath\_predictor}}
+\index{\_imc\_peath\_predictor@{\_imc\_peath\_predictor}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_peath\_predictor()}{\_imc\_peath\_predictor()}}
+{\footnotesize\ttfamily \label{png__parser_8c_a0b07cd7e95a47da0b6211b85562f31b0} 
+static uint32\+\_\+t \+\_\+imc\+\_\+peath\+\_\+predictor (\begin{DoxyParamCaption}\item[{const uint8\+\_\+t}]{a}{, }\item[{const uint8\+\_\+t}]{b}{, }\item[{const uint8\+\_\+t}]{c}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+The paeth predictor algorithm used in filter type 4\+: PAETH. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em a} & Byte to the left of x or 0 if x resides within the first pixel of the scanline \\
+\hline
+{\em b} & Byte directly above x (same index of previous scanline) or 0 if parsing the first scanline \\
+\hline
+{\em c} & Byte to the left of b or 0 if either x resides within the first pixel of the scanline of parsing the first scanline \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The predictor for byte x 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_a8896d49506c0f6b8d86845acf1d5240b}\index{png\_parser.c@{png\_parser.c}!\_imc\_print\_ihdr\_info@{\_imc\_print\_ihdr\_info}}
+\index{\_imc\_print\_ihdr\_info@{\_imc\_print\_ihdr\_info}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_print\_ihdr\_info()}{\_imc\_print\_ihdr\_info()}}
+{\footnotesize\ttfamily \label{png__parser_8c_a8896d49506c0f6b8d86845acf1d5240b} 
+static void \+\_\+imc\+\_\+print\+\_\+ihdr\+\_\+info (\begin{DoxyParamCaption}\item[{const Ihdr\+\_\+t}]{ihdr}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Print IHDR debug information. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em ihdr} & The ihdr\+\_\+t struct whos data will be logged \\
+\hline
+\end{DoxyParams}
+\begin{DoxyWarning}{Warning}
+Compression method and filter method will be hardcoded until PNG supports alternative standards 
+\end{DoxyWarning}
+\Hypertarget{png__parser_8c_af0cc855d80d961ebaf4b6dcb09a52c68}\index{png\_parser.c@{png\_parser.c}!\_imc\_read\_chunk@{\_imc\_read\_chunk}}
+\index{\_imc\_read\_chunk@{\_imc\_read\_chunk}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_read\_chunk()}{\_imc\_read\_chunk()}}
+{\footnotesize\ttfamily \label{png__parser_8c_af0cc855d80d961ebaf4b6dcb09a52c68} 
+static Imc\+Error\+\_\+t \+\_\+imc\+\_\+read\+\_\+chunk (\begin{DoxyParamCaption}\item[{const Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*}const}]{png}{, }\item[{Chunk\+\_\+t \texorpdfstring{$\ast$}{*}}]{chunk}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Read the next chunk from PNG and advance the file pointer. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em A} & png\+\_\+hndl\+\_\+t struct containing the relevant PNG image data \\
+\hline
+{\em The} & output location for chunk information \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+IMC\+\_\+\+EFAULT if the function fails to allocate memory for chunk data, otherwise IMC\+\_\+\+EOK 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_a5ac64eed35a865248545d67e4db6b54b}\index{png\_parser.c@{png\_parser.c}!\_imc\_recon\_avg@{\_imc\_recon\_avg}}
+\index{\_imc\_recon\_avg@{\_imc\_recon\_avg}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_recon\_avg()}{\_imc\_recon\_avg()}}
+{\footnotesize\ttfamily \label{png__parser_8c_a5ac64eed35a865248545d67e4db6b54b} 
+static uint8\+\_\+t \+\_\+imc\+\_\+recon\+\_\+avg (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{prev\+\_\+scanline}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{curr\+\_\+scanline}{, }\item[{const uint8\+\_\+t}]{n\+\_\+channels}{, }\item[{const size\+\_\+t}]{idx}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+IDAT reconstruct method 3 (AVERAGE). 
+
+Recon(x) = Filt(x) + floor((Recon(a) + Recon(b)) / 2) \begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em prev\+\_\+scanline} & The previously unfiltered scanline \\
+\hline
+{\em curr\+\_\+scanline} & The scanline being reconstructed \\
+\hline
+{\em n\+\_\+channels} & The number of channels / samples per pixel \\
+\hline
+{\em idx} & An index applied to curr\+\_\+scanline to retrieve the current byte \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The reconstructed byte for curr\+\_\+scanline\mbox{[}idx\mbox{]} 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_a68b06bc1c8c8a214d41e6f7fb4339c42}\index{png\_parser.c@{png\_parser.c}!\_imc\_recon\_none@{\_imc\_recon\_none}}
+\index{\_imc\_recon\_none@{\_imc\_recon\_none}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_recon\_none()}{\_imc\_recon\_none()}}
+{\footnotesize\ttfamily \label{png__parser_8c_a68b06bc1c8c8a214d41e6f7fb4339c42} 
+static uint8\+\_\+t \+\_\+imc\+\_\+recon\+\_\+none (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{prev\+\_\+scanline}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{curr\+\_\+scanline}{, }\item[{const uint8\+\_\+t}]{n\+\_\+channels}{, }\item[{const size\+\_\+t}]{idx}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+IDAT reconstruct method 0 (NONE). 
+
+\begin{DoxyVerb}               +-+-+
+\end{DoxyVerb}
+ Previous scanline\+: \texorpdfstring{$\vert$}{|}c\texorpdfstring{$\vert$}{|}b\texorpdfstring{$\vert$}{|} +-\/+-\/+ Current scanline\+: \texorpdfstring{$\vert$}{|}a\texorpdfstring{$\vert$}{|}x\texorpdfstring{$\vert$}{|} +-\/+-\/+ Recon(x) = Filt(x) \begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em prev\+\_\+scanline} & The previously unfiltered scanline \\
+\hline
+{\em curr\+\_\+scanline} & The scanline being reconstructed \\
+\hline
+{\em n\+\_\+channels} & The number of channels / samples per pixel \\
+\hline
+{\em idx} & An index applied to curr\+\_\+scanline to retrieve the current byte \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The reconstructed byte for curr\+\_\+scanline\mbox{[}idx\mbox{]} 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_aaf448bb98c584d72e447bfdd70f47430}\index{png\_parser.c@{png\_parser.c}!\_imc\_recon\_paeth@{\_imc\_recon\_paeth}}
+\index{\_imc\_recon\_paeth@{\_imc\_recon\_paeth}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_recon\_paeth()}{\_imc\_recon\_paeth()}}
+{\footnotesize\ttfamily \label{png__parser_8c_aaf448bb98c584d72e447bfdd70f47430} 
+static uint8\+\_\+t \+\_\+imc\+\_\+recon\+\_\+paeth (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{prev\+\_\+scanline}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{curr\+\_\+scanline}{, }\item[{const uint8\+\_\+t}]{n\+\_\+channels}{, }\item[{const size\+\_\+t}]{idx}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+IDAT reconstruct method 4 (PAETH). 
+
+Recon(x) = Filt(x) + Paeth\+Predictor(Recon(a), Recon(b), Recon(c)) \begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em prev\+\_\+scanline} & The previously unfiltered scanline \\
+\hline
+{\em curr\+\_\+scanline} & The scanline being reconstructed \\
+\hline
+{\em n\+\_\+channels} & The number of channels / samples per pixel \\
+\hline
+{\em idx} & An index applied to curr\+\_\+scanline to retrieve the current byte \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The reconstructed byte for curr\+\_\+scanline\mbox{[}idx\mbox{]} 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_a406cc97d39a7ab1517d613e872a379df}\index{png\_parser.c@{png\_parser.c}!\_imc\_recon\_sub@{\_imc\_recon\_sub}}
+\index{\_imc\_recon\_sub@{\_imc\_recon\_sub}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_recon\_sub()}{\_imc\_recon\_sub()}}
+{\footnotesize\ttfamily \label{png__parser_8c_a406cc97d39a7ab1517d613e872a379df} 
+static uint8\+\_\+t \+\_\+imc\+\_\+recon\+\_\+sub (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{prev\+\_\+scanline}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{curr\+\_\+scanline}{, }\item[{const uint8\+\_\+t}]{n\+\_\+channels}{, }\item[{const size\+\_\+t}]{idx}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+IDAT reconstruct method 1 (SUB). 
+
+Recon(x) = Filt(x) + Recon(a) \begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em prev\+\_\+scanline} & The previously unfiltered scanline \\
+\hline
+{\em curr\+\_\+scanline} & The scanline being reconstructed \\
+\hline
+{\em n\+\_\+channels} & The number of channels / samples per pixel \\
+\hline
+{\em idx} & An index applied to curr\+\_\+scanline to retrieve the current byte \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The reconstructed byte for curr\+\_\+scanline\mbox{[}idx\mbox{]} 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_ab9304047801d3996d04be7ddaf39cfbd}\index{png\_parser.c@{png\_parser.c}!\_imc\_recon\_up@{\_imc\_recon\_up}}
+\index{\_imc\_recon\_up@{\_imc\_recon\_up}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_recon\_up()}{\_imc\_recon\_up()}}
+{\footnotesize\ttfamily \label{png__parser_8c_ab9304047801d3996d04be7ddaf39cfbd} 
+static uint8\+\_\+t \+\_\+imc\+\_\+recon\+\_\+up (\begin{DoxyParamCaption}\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{prev\+\_\+scanline}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{curr\+\_\+scanline}{, }\item[{const uint8\+\_\+t}]{n\+\_\+channels}{, }\item[{const size\+\_\+t}]{idx}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+IDAT reconstruct method 2 (UP). 
+
+Recon(x) = Filt(x) + Recon(b) \begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em prev\+\_\+scanline} & The previously unfiltered scanline \\
+\hline
+{\em curr\+\_\+scanline} & The scanline being reconstructed \\
+\hline
+{\em n\+\_\+channels} & The number of channels / samples per pixel \\
+\hline
+{\em idx} & An index applied to curr\+\_\+scanline to retrieve the current byte \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The reconstructed byte for curr\+\_\+scanline\mbox{[}idx\mbox{]} 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_ad6e0a2969f17100dd144d6104a3e4c86}\index{png\_parser.c@{png\_parser.c}!\_imc\_reconstruct\_idat@{\_imc\_reconstruct\_idat}}
+\index{\_imc\_reconstruct\_idat@{\_imc\_reconstruct\_idat}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_reconstruct\_idat()}{\_imc\_reconstruct\_idat()}}
+{\footnotesize\ttfamily \label{png__parser_8c_ad6e0a2969f17100dd144d6104a3e4c86} 
+static Imc\+Error\+\_\+t \+\_\+imc\+\_\+reconstruct\+\_\+idat (\begin{DoxyParamCaption}\item[{const Ihdr\+\_\+t \texorpdfstring{$\ast$}{*}const}]{ihdr}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{decomp\+\_\+buf}{, }\item[{Pixmap\+\_\+t \texorpdfstring{$\ast$}{*}}]{pixmap}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Reconstructs the IDAT chunk after it\textquotesingle{}s been decompressed. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em ihdr} & The IHDR information pertaining to the PNG \\
+\hline
+{\em decomp\+\_\+buf} & The decompressed buffer data of the IDAT \\
+\hline
+{\em pixmap} & A Pixmap\+\_\+t struct into which the reconstructed data will be copied \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An Imc\+Error\+\_\+t indicating the exit status code 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_add8bdc400ca2d462767c4a177378afe7}\index{png\_parser.c@{png\_parser.c}!\_imc\_validate\_png\_ihdr@{\_imc\_validate\_png\_ihdr}}
+\index{\_imc\_validate\_png\_ihdr@{\_imc\_validate\_png\_ihdr}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{\_imc\_validate\_png\_ihdr()}{\_imc\_validate\_png\_ihdr()}}
+{\footnotesize\ttfamily \label{png__parser_8c_add8bdc400ca2d462767c4a177378afe7} 
+static Imc\+Error\+\_\+t \+\_\+imc\+\_\+validate\+\_\+png\+\_\+ihdr (\begin{DoxyParamCaption}\item[{const Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*}const}]{png}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Validate the IHDR chunk of the PNG and seek past it. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em A} & png\+\_\+hndl\+\_\+t struct containing the relevant PNG image data \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+IMC\+\_\+\+ERROR if the file is either not a PNG or the PNG was corrupted or IMC\+\_\+\+EOK upon success 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_a0b38d5f9ffa3309abfd7cb7e4d8745f6}\index{png\_parser.c@{png\_parser.c}!imc\_png\_close@{imc\_png\_close}}
+\index{imc\_png\_close@{imc\_png\_close}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{imc\_png\_close()}{imc\_png\_close()}}
+{\footnotesize\ttfamily \label{png__parser_8c_a0b38d5f9ffa3309abfd7cb7e4d8745f6} 
+Imc\+Error\+\_\+t imc\+\_\+png\+\_\+close (\begin{DoxyParamCaption}\item[{Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*}}]{png}{}\end{DoxyParamCaption})}
+
+
+
+Close the PNG file referenced by "{}png"{}. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em png} & A Png\+Hndl\+\_\+t pointer refererencing the PNG file to be closed \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An Imc\+Error\+\_\+t indicating the exit status of the operation 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_add1fac2679636c999844841810fee090}\index{png\_parser.c@{png\_parser.c}!imc\_png\_open@{imc\_png\_open}}
+\index{imc\_png\_open@{imc\_png\_open}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{imc\_png\_open()}{imc\_png\_open()}}
+{\footnotesize\ttfamily \label{png__parser_8c_add1fac2679636c999844841810fee090} 
+Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*} imc\+\_\+png\+\_\+open (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}const}]{path}{}\end{DoxyParamCaption})}
+
+
+
+Prepare/open a PNG file for parsing. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em path} & An absolute or relative path to the PNG file \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A png\+\_\+hndl\+\_\+t struct which can be passed to other functions of the library 
+\end{DoxyReturn}
+\Hypertarget{png__parser_8c_afdef5967326e6b4c2781b5f5f9d4688f}\index{png\_parser.c@{png\_parser.c}!imc\_png\_parse@{imc\_png\_parse}}
+\index{imc\_png\_parse@{imc\_png\_parse}!png\_parser.c@{png\_parser.c}}
+\doxysubsubsection{\texorpdfstring{imc\_png\_parse()}{imc\_png\_parse()}}
+{\footnotesize\ttfamily \label{png__parser_8c_afdef5967326e6b4c2781b5f5f9d4688f} 
+Pixmap\+\_\+t \texorpdfstring{$\ast$}{*} imc\+\_\+png\+\_\+parse (\begin{DoxyParamCaption}\item[{Png\+Hndl\+\_\+t \texorpdfstring{$\ast$}{*}}]{png}{}\end{DoxyParamCaption})}
+
+
+
+Parse a PNG image and return it as a Pixmap\+\_\+t structure. 
+
+\begin{DoxySince}{Since}
+15-\/01-\/2024 
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em png} & A handle to the png file obtained via imc\+\_\+open\+\_\+png() \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A Pixmap\+\_\+t structure containing the raw PNG pixel data 
+\end{DoxyReturn}

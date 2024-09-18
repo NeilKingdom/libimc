@@ -1,9 +1,9 @@
 /**
  * @file png_parser.c
- * @since 15-01-2024
  * @author Neil Kingdom
+ * @since 15-01-2024
  * @version 1.0
- * @brief Contains the internal APIs necessary for parsing a PNG file.
+ * @brief Contains the internal functions necessary for parsing a PNG file.
  */
 
 #include "png_parser.h"
@@ -17,7 +17,7 @@
 /**
  * @brief Flip the endianness of a given primitive.
  * @since 15-01-2024
- * @param data The data whose endianness will be flipped
+ * @param[in] data The data whose endianness will be flipped
  */
 #define _IMC_FLIP_ENDIAN(data) do { \
     size_t i; \
