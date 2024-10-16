@@ -1,7 +1,7 @@
+*.ppm
 compile_flags.txt
 test.c
 run.sh
 imc_test
-raster.ppm
 obj
 bin

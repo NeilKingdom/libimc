@@ -101,20 +101,21 @@ typedef enum {
 } ColorType_t;
 
 typedef struct {
-    uint32_t width;             /* Image width */
-    uint32_t height;            /* Image height */
-    uint8_t  bit_depth;         /* Pixel bit-depth */
-    uint8_t  color_type;        /* See enum ColorType */
-    uint8_t  compress_mthd;     /* Currently only 0 (LZ77) */
-    uint8_t  filter_mthd;       /* Currently onlt 0 (Adaptive filtering) */
-    uint8_t  interlace_mthd;    /* 0 = Non-interlaced, 1 = interlaced */
+    uint32_t width;             /* Image width (in pixels) */
+    uint32_t height;            /* Image height (in pixels) */
+    uint8_t  bit_depth;         /* Number of bits per-channel */
+    uint8_t  color_type;        /* See enum ColorType_t */
+    uint8_t  compress_mthd;     /* Compression method (currently only 0 is supported (LZ77)) */
+    uint8_t  filter_mthd;       /* Filter method (currently only 0 is supported (Adaptive filtering)) */
+    uint8_t  interlace_mthd;    /* Interlace method (0 = Non-interlaced, 1 = interlaced) */
     uint8_t  n_channels;        /* The number of channels / samples per pixel */
-    uint8_t  padding[2];        /* Padding for struct bit alignment */
 } Ihdr_t;
 
+/* NOT SUPPORTED
 typedef struct {
-    Rgb_t plte_entries[256];
+    Rgb_t entries[256];
 } Plte_t;
+*/
 
 typedef struct {
     uint8_t *data;     /* Compressed data stream */
@@ -123,11 +124,9 @@ typedef struct {
 } Idat_t;
 
 typedef struct {
-
 } Trns_t;
 
 typedef struct {
-
 } Gama_t;
 
 typedef struct {
@@ -168,7 +167,7 @@ typedef enum {
 typedef struct {
     FILE    *fp;    /* The file handle */
     uint8_t *data;  /* Copy of raw data */
-    size_t   size;  /* Size of data in bytes */
+    size_t   size;  /* Size of data (in bytes) */
 } PngHndl_t;
 
 /* Used for reconstructing filtered scanlines */

@@ -15,6 +15,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
+/* Change to static to make all functions static */
+#define IMC_DECL
+
 typedef struct {
     uint8_t r;
     uint8_t g;
@@ -27,9 +30,6 @@ typedef struct {
     uint8_t b;
     uint8_t a;
 } Rgba_t;
-
-/* Change to static to make all functions static */
-#define IMC_DECL
 
 /* Errors align with those defined in errno.h */
 typedef enum {
@@ -48,12 +48,10 @@ typedef enum {
     IMC_ERROR
 } ImcLogLevel_t;
 
-__attribute__((always_inline))
 static inline float imc_lerp(const float a, const float b, const float t) {
     return a * (1.0 - t) + (b * t);
 }
 
-__attribute__((always_inline))
 static inline float imc_clamp(const float min, const float max, const float x) {
     return (x < min) ? min : ((x > max) ? max : x);
 }
@@ -76,13 +74,13 @@ static void _imc_log(
     char header[20];
     switch (level) {
         case IMC_NOTE:
-            strncpy(header, "NOTE", 20);
+            strncpy(header, "NOTE", sizeof(header));
             break;
         case IMC_WARNING:
-            strncpy(header, "WARNING", 20);
+            strncpy(header, "WARNING", sizeof(header));
             break;
         case IMC_ERROR:
-            strncpy(header, "ERROR", 20);
+            strncpy(header, "ERROR", sizeof(header));
             break;
     }
 
