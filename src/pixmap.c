@@ -62,7 +62,7 @@ static ImcError_t _imc_pixmap_upscale_height(
  */
 inline size_t imc_sizeof_px(const Pixmap_t pixmap) {
     /* Practically speaking, only a bit-depth of 16 will occupy 2 bytes, whereas other bit-depths will occupy 1 */
-    return (pixmap.bit_depth <= 8) ? pixmap.n_channels : pixmap.n_channels * 2;
+    return (pixmap.bit_depth > 8) ? pixmap.n_channels * 2 : pixmap.n_channels;
 }
 
 /**
@@ -95,7 +95,6 @@ Rgb_t imc_blend_alpha(const Rgb_t fg_col, const Rgb_t bg_col, const uint8_t alph
 Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const float x, const float y) {
     float _x, _y;
     int x_intrp, y_intrp;
-    size_t scanline_len;
 
     Rgb_t rgb;
     Rgba_t rgba;
@@ -115,12 +114,10 @@ Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const float x, const float y) {
         );
     }
 
-    scanline_len = pixmap->width / imc_sizeof_px(*pixmap);
-
-    y_intrp = scanline_len * (int)roundf(_y * pixmap->height);
+    y_intrp = pixmap->width * (int)roundf(_y * pixmap->height);
     x_intrp = imc_lerp(0.0f, pixmap->width - 1.0f, _x);
     /* Make sure we're aligned on the start of a pixel boundary */
-    x_intrp -= x_intrp % imc_sizeof_px(*pixmap);
+    x_intrp = x_intrp / imc_sizeof_px(*pixmap);
 
     if (pixmap->n_channels == 3) {
         rgb = ((Rgb_t*)pixmap->data)[y_intrp + x_intrp];
@@ -143,7 +140,6 @@ Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const float x, const float y) {
  */
 Rgba_t imc_pixmap_psample(Pixmap_t *pixmap, const size_t x, const size_t y) {
     size_t _x = x, _y = y;
-    size_t scanline_len;
 
     Rgb_t rgb;
     Rgba_t rgba;
@@ -151,19 +147,16 @@ Rgba_t imc_pixmap_psample(Pixmap_t *pixmap, const size_t x, const size_t y) {
     if (x >= pixmap->width) {
         _x = pixmap->width - 1;
     }
-    _x *= imc_sizeof_px(*pixmap);
 
     if (y >= pixmap->height) {
         _y = pixmap->height - 1;
     }
 
-    scanline_len = pixmap->width / imc_sizeof_px(*pixmap);
-
     if (pixmap->n_channels == 3) {
-        rgb = ((Rgb_t*)pixmap->data)[(_y * scanline_len) + _x];
+        rgb = ((Rgb_t*)pixmap->data)[(_y * pixmap->width) + _x];
         rgba = (Rgba_t){ rgb.r, rgb.g, rgb.b, 255 };
-    } else if (pixmap->n_channels == 2) {
-        rgba = ((Rgba_t*)pixmap->data)[(_y * scanline_len) + _x];
+    } else if (pixmap->n_channels == 4) {
+        rgba = ((Rgba_t*)pixmap->data)[(_y * pixmap->width) + _x];
     }
 
     return rgba;
@@ -221,7 +214,6 @@ ImcError_t imc_pixmap_scale(
  */
 ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
     int x, y, a;
-    size_t scanline_len;
 
     Pixmap_t tmp;
     Rgb_t rgb;
@@ -245,15 +237,13 @@ ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
         }
     }
 
-    scanline_len = pixmap->width / imc_sizeof_px(*pixmap);
-
     for (y = 0; y < tmp.height; ++y) {
-        for (x = 0; x < scanline_len; ++x) {
+        for (x = 0; x < pixmap->width; ++x) {
             if (pixmap->n_channels == 3) {
-                rgb = ((Rgb_t*)pixmap->data)[(y * scanline_len) + x];
+                rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
                 rgba = (Rgba_t){ rgb.r, rgb.g, rgb.b, 255 };
             } else if (pixmap->n_channels == 4) {
-                rgba = ((Rgba_t*)pixmap->data)[(y * scanline_len) + x];
+                rgba = ((Rgba_t*)pixmap->data)[(y * pixmap->width) + x];
             }
 
             a = 255 - ((r_weight * rgba.r) + (g_weight * rgba.g) + (b_weight * rgba.b));
@@ -295,7 +285,6 @@ ImcError_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold
  */
 ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     int x, y, luma_idx;
-    size_t scanline_len;
     float luma, r_norm, g_norm, b_norm;
 
     Rgb_t rgb;
@@ -317,12 +306,10 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
         return IMC_EFAULT;
     }
 
-    scanline_len = pixmap->width / imc_sizeof_px(*pixmap);
-
     for (y = 0; y < pixmap->height; ++y) {
-        for (x = 0; x < scanline_len; ++x) {
+        for (x = 0; x < pixmap->width; ++x) {
             if (pixmap->n_channels == 3) {
-                rgb = ((Rgb_t*)pixmap->data)[(y * scanline_len) + x];
+                rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
                 r_norm = (float)rgb.r / 255.0f;
                 g_norm = (float)rgb.g / 255.0f;
                 b_norm = (float)rgb.b / 255.0f;
@@ -330,13 +317,13 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
                 luma = (r_weight * r_norm) + (g_weight * g_norm) + (b_weight * b_norm);
                 luma_idx = roundf(luma * 10) - 1;
             } else if (pixmap->n_channels == 4) {
-                rgba = ((Rgba_t*)pixmap->data)[(y * scanline_len) + x];
+                rgba = ((Rgba_t*)pixmap->data)[(y * pixmap->width) + x];
 
                 luma = ((float)rgba.a / 255.0f) + c;
                 luma_idx = 10 - (roundf(luma * 10) - 1);
             }
 
-            tmp.data[(y * scanline_len) + x] = ascii_luma[(int)imc_clamp(0, 9, luma_idx)];
+            tmp.data[(y * pixmap->width) + x] = ascii_luma[(int)imc_clamp(0, 9, luma_idx)];
         }
     }
 
@@ -351,8 +338,8 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     }
 
     for (y = 0; y < pixmap->height; ++y) {
-        for (x = 0; x < scanline_len; ++x) {
-            putc(pixmap->data[(y * scanline_len) + x], fp);
+        for (x = 0; x < pixmap->width; ++x) {
+            putc(pixmap->data[(y * pixmap->width) + x], fp);
         }
         putc('\n', fp);
     }
@@ -369,7 +356,7 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
  * @returns An ImcError_t representing the exit status code
  */
 ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rgb_t bg_col) {
-    size_t x, y, bpp, scanline_len;
+    size_t x, y, bpp;
 
     Rgb_t rgb;
     Rgba_t rgba;
@@ -382,20 +369,19 @@ ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rg
     }
 
     bpp = (size_t)powf(2.0f, pixmap->bit_depth) - 1.0f;
-    scanline_len = pixmap->width / imc_sizeof_px(*pixmap);
 
     /* Write PPM header */
     fputs("P6\n", fp);
-    fprintf(fp, "%ld %ld\n", scanline_len, pixmap->height);
+    fprintf(fp, "%ld %ld\n", pixmap->width, pixmap->height);
     fprintf(fp, "%ld\n", bpp);
 
     /* Write PPM data */
     for (y = 0; y < pixmap->height; ++y) {
-        for (x = 0; x < scanline_len; ++x) {
+        for (x = 0; x < pixmap->width; ++x) {
             if (pixmap->n_channels == 3) {
-                rgb = ((Rgb_t*)pixmap->data)[(y * scanline_len) + x];
+                rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
             } else if (pixmap->n_channels == 4) {
-                rgba = ((Rgba_t*)pixmap->data)[(y * scanline_len) + x];
+                rgba = ((Rgba_t*)pixmap->data)[(y * pixmap->width) + x];
                 rgb = imc_blend_alpha((Rgb_t){ rgba.r, rgba.g, rgba.b }, bg_col, rgba.a);
             }
 
@@ -416,38 +402,36 @@ ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rg
  * @returns An ImcError_t representing the exit status code of the function
  */
 ImcError_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
-    size_t x1, x2, y1, y2, scanline_len1, scanline_len2;
+    size_t x1, x2, y1, y2;
 
     Pixmap_t tmp;
     Rgb_t rgb;
     Rgba_t rgba;
 
     tmp = *pixmap;
-    tmp.width = pixmap->height * imc_sizeof_px(*pixmap);
-    tmp.height = pixmap->width / imc_sizeof_px(*pixmap);
-    tmp.data = malloc(tmp.width * tmp.height);
+    tmp.width = pixmap->height;
+    tmp.height = pixmap->width;
+    tmp.data = malloc((tmp.width * imc_sizeof_px(tmp)) * tmp.height);
     if (tmp.data == NULL) {
         IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
         return IMC_EFAULT;
     }
 
-    scanline_len1 = tmp.width / imc_sizeof_px(tmp);
-    scanline_len2 = pixmap->width / imc_sizeof_px(*pixmap);
     for (y2 = 0; y2 < pixmap->height; ++y2) {
-        for (x2 = 0; x2 < scanline_len2; ++x2) {
-            x1 = -y2;
-            y1 = x2;
+        for (x2 = 0; x2 < pixmap->width; ++x2) {
+            x1 = -y2 - 1;
+            y1 = x2 + 1;
 
-            if ((y1 * scanline_len1) + x1 >= (scanline_len1 * tmp.height)) {
+            if ((y1 * tmp.width) + x1 >= (tmp.width * tmp.height)) {
                 continue;
             }
 
             if (tmp.n_channels == 3) {
-                ((Rgb_t*)tmp.data)[(y1 * scanline_len1) + x1]
-                    = ((Rgb_t*)pixmap->data)[(y2 * scanline_len2) + x2];
+                ((Rgb_t*)tmp.data)[(y1 * tmp.width) + x1]
+                    = ((Rgb_t*)pixmap->data)[(y2 * pixmap->width) + x2];
             } else if (tmp.n_channels == 4) {
-                ((Rgba_t*)tmp.data)[(y1 * scanline_len1) + x1]
-                    = ((Rgba_t*)pixmap->data)[(y2 * scanline_len2) + x2];
+                ((Rgba_t*)tmp.data)[(y1 * tmp.width) + x1]
+                    = ((Rgba_t*)pixmap->data)[(y2 * pixmap->width) + x2];
             }
         }
     }
@@ -468,34 +452,32 @@ ImcError_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
     Rgb_t rgb;
     Rgba_t rgba;
     Pixmap_t tmp;
-    size_t x1, x2, y1, y2, scanline_len1, scanline_len2;
+    size_t x1, x2, y1, y2;
 
     tmp = *pixmap;
-    tmp.width = pixmap->height * imc_sizeof_px(*pixmap);
-    tmp.height = pixmap->width / imc_sizeof_px(*pixmap);
-    tmp.data = malloc(tmp.width * tmp.height);
+    tmp.width = pixmap->height;
+    tmp.height = pixmap->width;
+    tmp.data = malloc((tmp.width * imc_sizeof_px(tmp)) * tmp.height);
     if (tmp.data == NULL) {
         IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
         return IMC_EFAULT;
     }
 
-    scanline_len1 = tmp.width / imc_sizeof_px(tmp);
-    scanline_len2 = pixmap->width / imc_sizeof_px(*pixmap);
     for (y2 = 0; y2 < pixmap->height; ++y2) {
-        for (x2 = 0; x2 < scanline_len2; ++x2) {
+        for (x2 = 0; x2 < pixmap->width; ++x2) {
             x1 = y2;
-            y1 = -x2 + scanline_len2;
+            y1 = -x2 + pixmap->width - 1;
 
-            if ((y1 * scanline_len1) + x1 >= (scanline_len1 * tmp.height)) {
+            if ((y1 * tmp.width) + x1 >= (tmp.width * tmp.height)) {
                 continue;
             }
 
             if (tmp.n_channels == 3) {
-                ((Rgb_t*)tmp.data)[(y1 * scanline_len1) + x1]
-                    = ((Rgb_t*)pixmap->data)[(y2 * scanline_len2) + x2];
+                ((Rgb_t*)tmp.data)[(y1 * tmp.width) + x1]
+                    = ((Rgb_t*)pixmap->data)[(y2 * pixmap->width) + x2];
             } else if (tmp.n_channels == 4) {
-                ((Rgba_t*)tmp.data)[(y1 * scanline_len1) + x1]
-                    = ((Rgba_t*)pixmap->data)[(y2 * scanline_len2) + x2];
+                ((Rgba_t*)tmp.data)[(y1 * tmp.width) + x1]
+                    = ((Rgba_t*)pixmap->data)[(y2 * pixmap->width) + x2];
             }
         }
     }

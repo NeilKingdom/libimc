@@ -502,20 +502,22 @@ static ImcError_t _imc_reconstruct_idat(
     uint8_t *prev_scanline = NULL;
     recon_func rf;
 
-    pixmap->width = scanline_len = (ihdr->n_channels * ihdr->width * ihdr->bit_depth + 7) >> 3;
+    pixmap->width = ihdr->width;
     pixmap->height = ihdr->height;
     pixmap->bit_depth = ihdr->bit_depth;
     pixmap->n_channels = ihdr->n_channels;
-    pixmap->data = malloc(pixmap->width * pixmap->height);
+
+    scanline_len = (pixmap->n_channels * pixmap->width * pixmap->bit_depth + 7) >> 3;
+    prev_scanline = alloca(scanline_len);
+    memset((void*)prev_scanline, 0, scanline_len);
+
+    pixmap->data = malloc(scanline_len * pixmap->height);
     if (pixmap->data == NULL) {
         IMC_LOG("Failed to allocate memory for pixmap->data", IMC_ERROR);
         return IMC_EFAULT;
     }
 
-    prev_scanline = alloca(scanline_len);
-    memset((void*)prev_scanline, 0, scanline_len);
-
-    for (decomp_off = 0; decomp_off < (pixmap->width * pixmap->height); decomp_off += scanline_len) {
+    for (decomp_off = 0; decomp_off < (scanline_len * pixmap->height); decomp_off += scanline_len) {
         /* Filter method */
         fm = decomp_buf[decomp_off++];
         assert(fm <= 4);
@@ -547,6 +549,7 @@ static ImcError_t _imc_reconstruct_idat(
         prev_scanline = curr_scanline;
     }
 
+    pixmap->offset = 0;
     return IMC_EOK;
 }
 
