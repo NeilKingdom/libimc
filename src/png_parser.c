@@ -502,6 +502,7 @@ static ImcError_t _imc_reconstruct_idat(
     uint8_t *prev_scanline = NULL;
     recon_func rf;
 
+    pixmap->offset = 0;
     pixmap->width = ihdr->width;
     pixmap->height = ihdr->height;
     pixmap->bit_depth = ihdr->bit_depth;
