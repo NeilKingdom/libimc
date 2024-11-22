@@ -718,6 +718,7 @@ Pixmap_t *imc_png_parse(PngHndl_t *png) {
     _imc_decompress_idat(&ihdr, &idat, &decomp_buf);
     _imc_reconstruct_idat(&ihdr, decomp_buf, pixmap);
 
+    free(decomp_buf);
     free(idat.data);
     return pixmap;
 }

@@ -487,3 +487,24 @@ ImcError_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
 
     return IMC_EOK;
 }
+
+/**
+ * @brief Frees resources allocated to __pixmap__.
+ * @since 21-11-2024
+ * @param pixmap The pixmap whos resources shall be released
+ * @returns IMC_EFAULT if __pixmap__ is invalid, otherwise IMC_EOK
+ */
+ImcError_t imc_pixmap_destroy(Pixmap_t *pixmap) {
+    if (pixmap == NULL) {
+        return IMC_EFAULT;
+    }
+
+    if (pixmap->data) {
+        free(pixmap->data);
+    }
+
+    free(pixmap);
+    pixmap = NULL;
+
+    return IMC_EOK;
+}
