@@ -1,7 +1,4 @@
-*.ppm
-compile_flags.txt
-test.c
-run.sh
-imc_test
-obj
 bin
+obj
+compile_commands.json
+.cache

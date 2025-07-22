@@ -23,12 +23,17 @@ LDFLAGS += -lc -lm -lz -lcheck
 BINS := $(BIN_DIR)/libimc.a $(BIN_DIR)/libimc.so
 
 # Create static and dynamic libraries
-all: $(BINS)
+all: prebuild $(BINS)
 
 # Copy libraries to /usr/lib
 install: all
 	cp $(BINS) $(TGT_BIN_DIR)
 	cp $(INC_DIR)/*.h $(TGT_INC_DIR)
+
+# Pre-build actions
+prebuild:
+	mkdir -p $(OBJ_DIR)
+	mkdir -p $(BIN_DIR)
 
 # Remove object files and binaries
 clean:
