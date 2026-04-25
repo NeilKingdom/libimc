@@ -1,6 +1,14 @@
 #ifndef IMC_COMMON_H
 #define IMC_COMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -10,49 +18,63 @@
 #include <unistd.h>
 #include <alloca.h>
 #include <math.h>
+#include <errno.h>
+#include <zlib.h>
+#include <sys/stat.h>
+#include <arpa/inet.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-/* Change to static to make all functions static */
-#define IMC_DECL
+typedef uint8_t  u8;
+typedef int8_t   i8;
+typedef uint16_t u16;
+typedef int16_t  i16;
+typedef uint32_t u32;
+typedef int32_t  i32;
+typedef uint64_t u64;
+typedef int64_t  i64;
+typedef float    f32;
+typedef double   f64;
+typedef size_t   usize;
+typedef ssize_t  isize;
 
 typedef struct {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
+    u8 r;
+    u8 g;
+    u8 b;
 } Rgb_t;
 
 typedef struct {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-    uint8_t a;
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
 } Rgba_t;
 
-/* Errors align with those defined in errno.h */
 typedef enum {
-    IMC_EFAIL       = -1,   /* General purpose error */
-    IMC_EOK         =  0,   /* No error */
-    IMC_ENOMEM      =  12,  /* Not enough memory */
-    IMC_EFAULT      =  14,  /* Bad address */
-    IMC_EINVAL      =  22,  /* The argument was invalid */
-    IMC_ENODATA     =  61,  /* No data available */
-    IMC_EOVERFLOW   =  75,  /* Value too large to be stored in data type */
-} ImcError_t;
+    RGB  = 3,
+    RGBA = 4,
+} PixFormat_t;
 
 typedef enum {
-    IMC_NOTE,
-    IMC_WARNING,
+    IMC_FAIL     = -1,           // General purpose error
+    IMC_OK       =  0,           // Success
+    IMC_NOMEM    =  ENOMEM,      // Not enough memory
+    IMC_FAULT    =  EFAULT,      // Bad address
+    IMC_INVAL    =  EINVAL,      // The argument was invalid
+    IMC_NODATA   =  ENODATA,     // No data available
+    IMC_OVERFLOW =  EOVERFLOW,   // Value too large to be stored in data type
+} ImcResult_t;
+
+typedef enum {
+    IMC_INFO,
+    IMC_WARN,
     IMC_ERROR
 } ImcLogLevel_t;
 
-static inline float imc_lerp(const float a, const float b, const float t) {
+static inline float imc_lerp(const f32 a, const f32 b, const f32 t) {
     return a * (1.0 - t) + (b * t);
 }
 
-static inline float imc_clamp(const float min, const float max, const float x) {
+static inline float imc_clamp(const f32 min, const f32 max, const f32 x) {
     return (x < min) ? min : ((x > max) ? max : x);
 }
 
@@ -69,22 +91,22 @@ static void _imc_log(
     const char *func,
     const int line,
     const char *msg,
-    const ImcLogLevel_t level) {
-
-    char header[20];
+    const ImcLogLevel_t level
+) {
+    char *header;
     switch (level) {
-        case IMC_NOTE:
-            strncpy(header, "NOTE", sizeof(header));
+        case IMC_INFO:
+            header = "INFO";
             break;
-        case IMC_WARNING:
-            strncpy(header, "WARNING", sizeof(header));
+        case IMC_WARN:
+            header = "WARNING";
             break;
         case IMC_ERROR:
-            strncpy(header, "ERROR", sizeof(header));
+            header = "ERROR";
             break;
     }
 
-    fprintf((level == IMC_NOTE) ? stdout : stderr,
+    fprintf((level == IMC_INFO) ? stdout : stderr,
         "\n=========== %s ===========\n"
         "Logger: %s\n"
         "File: %s, Function: %s, Line: %d\n",
@@ -104,6 +126,6 @@ static void _imc_log(
 
 #ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif
 
-#endif /* IMC_COMMON_H */
+#endif

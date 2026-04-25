@@ -16,36 +16,36 @@
 
 // TODO: Implement scaling functions
 
-static ImcError_t _imc_pixmap_downscale_width(
+static ImcResult_t _imc_pixmap_downscale_width(
     Pixmap_t *pixmap,
-    const size_t width,
+    const usize width,
     const ScaleMethod_t sm
 ) {
-    return IMC_EOK;
+    return IMC_OK;
 }
 
-static ImcError_t _imc_pixmap_upscale_width(
+static ImcResult_t _imc_pixmap_upscale_width(
     Pixmap_t *pixmap,
-    const size_t width,
+    const usize width,
     const ScaleMethod_t sm
 ) {
-    return IMC_EOK;
+    return IMC_OK;
 }
 
-static ImcError_t _imc_pixmap_downscale_height(
+static ImcResult_t _imc_pixmap_downscale_height(
     Pixmap_t *pixmap,
-    const size_t height,
+    const usize height,
     const ScaleMethod_t sm
 ) {
-    return IMC_EOK;
+    return IMC_OK;
 }
 
-static ImcError_t _imc_pixmap_upscale_height(
+static ImcResult_t _imc_pixmap_upscale_height(
     Pixmap_t *pixmap,
-    const size_t height,
+    const usize height,
     const ScaleMethod_t sm
 ) {
-    return IMC_EOK;
+    return IMC_OK;
 }
 
 /*
@@ -60,27 +60,10 @@ static ImcError_t _imc_pixmap_upscale_height(
  * @param[in] pixmap The input pixmap who's pixel size is being determined
  * @returns The size in bytes of a single pixel within __pixmap__
  */
-inline size_t imc_sizeof_px(const Pixmap_t pixmap) {
-    /* Practically speaking, only a bit-depth of 16 will occupy 2 bytes, whereas other bit-depths will occupy 1 */
+inline usize imc_sizeof_px(const Pixmap_t pixmap) {
+    // Practically speaking, only a bit-depth of 16 will occupy 2 bytes,
+    // whereas other bit-depths will occupy 1
     return (pixmap.bit_depth > 8) ? pixmap.n_channels * 2 : pixmap.n_channels;
-}
-
-/**
- * @brief Blends __fg_col__ with __bg_col__ accounting for the opacity given by __alpha__.
- * @since 15-01-2024
- * @param[in] fg_col The foreground color
- * @param[in] bg_col The background color
- * @param[in] alpha The opacity/alpha value that will be factored when blending
- * @returns A new Rgb_t containing the blended rgb pixel value
- */
-Rgb_t imc_blend_alpha(const Rgb_t fg_col, const Rgb_t bg_col, const uint8_t alpha) {
-    uint8_t r, g, b;
-    float a = (float)alpha / 255.0f;
-    r = (1.0f - a) * bg_col.r + a * fg_col.r;
-    g = (1.0f - a) * bg_col.g + a * fg_col.g;
-    b = (1.0f - a) * bg_col.b + a * fg_col.b;
-
-    return (Rgb_t){ r, g, b };
 }
 
 /**
@@ -92,31 +75,28 @@ Rgb_t imc_blend_alpha(const Rgb_t fg_col, const Rgb_t bg_col, const uint8_t alph
  * @param[in] y A normalized floating point value between 0.0f and 1.0f representing the y sampling component
  * @returns An Rgba_t struct representing the color of the sampled pixel
  */
-Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const float x, const float y) {
-    float _x, _y;
-    int x_intrp, y_intrp;
+Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const f32 x, const f32 y) {
+    Rgb_t rgb = { 0 };
+    Rgba_t rgba = { 0 };
 
-    Rgb_t rgb;
-    Rgba_t rgba;
-
-    _x = imc_clamp(0.0f, 1.0f, x);
+    f32 _x = imc_clamp(0.0f, 1.0f, x);
     if (_x != x) {
         IMC_LOG(
             "The value provided for x was outside the acceptable range (0.0f-1.0f) and will be clamped",
-            IMC_WARNING
+            IMC_WARN
         );
     }
-    _y = imc_clamp(0.0f, 1.0f, y);
+    f32 _y = imc_clamp(0.0f, 1.0f, y);
     if (_y != y) {
         IMC_LOG(
             "The value provided for y was outside the acceptable range (0.0f-1.0f) and will be clamped",
-            IMC_WARNING
+            IMC_WARN
         );
     }
 
-    y_intrp = pixmap->width * (int)roundf(_y * pixmap->height);
-    x_intrp = imc_lerp(0.0f, pixmap->width - 1.0f, _x);
-    /* Make sure we're aligned on the start of a pixel boundary */
+    usize y_intrp = pixmap->width * (int)roundf(_y * pixmap->height);
+    usize x_intrp = imc_lerp(0.0f, pixmap->width - 1.0f, _x);
+    // Make sure we're aligned on the start of a pixel boundary
     x_intrp = x_intrp / imc_sizeof_px(*pixmap);
 
     if (pixmap->n_channels == 3) {
@@ -138,16 +118,16 @@ Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const float x, const float y) {
  * @param[in] y The 0-indexed y sampling component, which represents the vertical offset into the pixmap
  * @returns An Rgba_t struct representing the color of the sampled pixel
  */
-Rgba_t imc_pixmap_psample(Pixmap_t *pixmap, const size_t x, const size_t y) {
-    size_t _x = x, _y = y;
+Rgba_t imc_pixmap_psample(Pixmap_t *pixmap, const usize x, const usize y) {
+    Rgb_t rgb = { 0 };
+    Rgba_t rgba = { 0 };
 
-    Rgb_t rgb;
-    Rgba_t rgba;
-
+    usize _x = x;
     if (x >= pixmap->width) {
         _x = pixmap->width - 1;
     }
 
+    usize _y = y;
     if (y >= pixmap->height) {
         _y = pixmap->height - 1;
     }
@@ -171,39 +151,39 @@ Rgba_t imc_pixmap_psample(Pixmap_t *pixmap, const size_t x, const size_t y) {
  * @param[in] sm The scaling method (only used when upscaling)
  * @returns An ImcError_t representing the exit status code
  */
-ImcError_t imc_pixmap_scale(
+ImcResult_t imc_pixmap_scale(
     Pixmap_t *pixmap,
-    const size_t width,
-    const size_t height,
+    const usize width,
+    const usize height,
     const ScaleMethod_t sm
 ) {
-    int status;
+    int result;
 
     if (width < pixmap->width) {
-        status = _imc_pixmap_downscale_width(pixmap, width, sm);
-        if (status != IMC_EOK) {
-            return IMC_EFAIL;
+        result = _imc_pixmap_downscale_width(pixmap, width, sm);
+        if (result != IMC_OK) {
+            return IMC_FAIL;
         }
     } else if (width > pixmap->width) {
-        status = _imc_pixmap_upscale_width(pixmap, width, sm);
-        if (status != IMC_EOK) {
-            return IMC_EFAIL;
+        result = _imc_pixmap_upscale_width(pixmap, width, sm);
+        if (result != IMC_OK) {
+            return IMC_FAIL;
         }
     }
 
     if (height < pixmap->height) {
-        status = _imc_pixmap_downscale_height(pixmap, height, sm);
-        if (status != IMC_EOK) {
-            return IMC_EFAIL;
+        result = _imc_pixmap_downscale_height(pixmap, height, sm);
+        if (result != IMC_OK) {
+            return IMC_FAIL;
         }
     } else if (height > pixmap->height) {
-        status = _imc_pixmap_upscale_height(pixmap, height, sm);
-        if (status != IMC_EOK) {
-            return IMC_EFAIL;
+        result = _imc_pixmap_upscale_height(pixmap, height, sm);
+        if (result != IMC_OK) {
+            return IMC_FAIL;
         }
     }
 
-    return IMC_EOK;
+    return IMC_OK;
 }
 
 /**
@@ -212,17 +192,15 @@ ImcError_t imc_pixmap_scale(
  * @param[in,out] pixmap The pixmap that shall be converted to grayscale
  * @returns An ImcError_t representing the exit status code
  */
-ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
-    int x, y, a;
-
+ImcResult_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
     Pixmap_t tmp;
     Rgb_t rgb;
     Rgba_t rgba;
 
-    /* Weights used to calculate alpha */
-    const float r_weight = 0.3f;
-    const float g_weight = 0.59f;
-    const float b_weight = 0.11f;
+    // Weights used to calculate alpha
+    const f32 r_weight = 0.3f;
+    const f32 g_weight = 0.59f;
+    const f32 b_weight = 0.11f;
 
     tmp = *pixmap;
     tmp.offset = 0;
@@ -233,12 +211,12 @@ ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
         tmp.data = malloc(tmp.width * tmp.height * sizeof(Rgba_t));
         if (tmp.data == NULL) {
             IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
-            return IMC_EFAULT;
+            return IMC_FAULT;
         }
     }
 
-    for (y = 0; y < tmp.height; ++y) {
-        for (x = 0; x < pixmap->width; ++x) {
+    for (usize y = 0; y < tmp.height; ++y) {
+        for (usize x = 0; x < pixmap->width; ++x) {
             if (pixmap->n_channels == 3) {
                 rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
                 rgba = (Rgba_t){ rgb.r, rgb.g, rgb.b, 255 };
@@ -246,7 +224,7 @@ ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
                 rgba = ((Rgba_t*)pixmap->data)[(y * pixmap->width) + x];
             }
 
-            a = 255 - ((r_weight * rgba.r) + (g_weight * rgba.g) + (b_weight * rgba.b));
+            uint8_t a = 255 - ((r_weight * rgba.r) + (g_weight * rgba.g) + (b_weight * rgba.b));
             rgba = (Rgba_t){ 0.0f, 0.0f, 0.0f, a };
             ((Rgba_t*)tmp.data)[tmp.offset++] = rgba;
         }
@@ -255,7 +233,7 @@ ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
     free(pixmap->data);
     *pixmap = tmp;
 
-    return IMC_EOK;
+    return IMC_OK;
 }
 
 /**
@@ -265,8 +243,8 @@ ImcError_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
  * @param[in] luma_threshold A normalized threshold between 0.0f-1.0f representing the cutoff between black and white
  * @returns An ImcError_t representing the exit status code
  */
-ImcError_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold) {
-    return IMC_EOK;
+ImcResult_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold) {
+    return IMC_OK;
 }
 
 /**
@@ -283,36 +261,35 @@ ImcError_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold
  * @param[in] fname The name of the file that the ASCII art shall be output to
  * @returns An ImcError_t representing the exit status code
  */
-ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
-    int x, y, luma_idx;
-    float luma, r_norm, g_norm, b_norm;
+ImcResult_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
+    Rgb_t rgb = { 0 };
+    Rgba_t rgba = { 0 };
+    Pixmap_t tmp = { 0 };
 
-    Rgb_t rgb;
-    Rgba_t rgba;
-    Pixmap_t tmp;
-    FILE *fp = NULL;
-
-    /* Weights used to calculate perceived luma */
-    const float c = 0.193f;
-    const float r_weight = 0.2126f;
-    const float g_weight = 0.7152f;
-    const float b_weight = 0.0722f;
+    // Weights used to calculate perceived luma
+    const f32 c = 0.193f;
+    const f32 r_weight = 0.2126f;
+    const f32 g_weight = 0.7152f;
+    const f32 b_weight = 0.0722f;
     const char ascii_luma[10] = { ' ', '.', ':', '-', '=', '+', '*', '#', '%', '@' };
 
     tmp = *pixmap;
     tmp.data = malloc(tmp.width * tmp.height * sizeof(char));
     if (tmp.data == NULL) {
         IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
-        return IMC_EFAULT;
+        return IMC_FAULT;
     }
 
-    for (y = 0; y < pixmap->height; ++y) {
-        for (x = 0; x < pixmap->width; ++x) {
+    for (usize y = 0; y < pixmap->height; ++y) {
+        for (usize x = 0; x < pixmap->width; ++x) {
+            int luma_idx = 0;
+            f32 luma;
+
             if (pixmap->n_channels == 3) {
                 rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
-                r_norm = (float)rgb.r / 255.0f;
-                g_norm = (float)rgb.g / 255.0f;
-                b_norm = (float)rgb.b / 255.0f;
+                f32 r_norm = (f32)rgb.r / 255.0f;
+                f32 g_norm = (f32)rgb.g / 255.0f;
+                f32 b_norm = (f32)rgb.b / 255.0f;
 
                 luma = (r_weight * r_norm) + (g_weight * g_norm) + (b_weight * b_norm);
                 luma_idx = roundf(luma * 10) - 1;
@@ -330,21 +307,22 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     free(pixmap->data);
     pixmap->data = tmp.data;
 
-    /* Output to file */
-    fp = fopen(fname, "wb");
+    // Output to file
+    FILE *fp = fopen(fname, "wb");
     if (fp == NULL) {
         IMC_LOG("Failed to open file for write", IMC_ERROR);
-        return IMC_EFAIL;
+        return IMC_FAIL;
     }
 
-    for (y = 0; y < pixmap->height; ++y) {
-        for (x = 0; x < pixmap->width; ++x) {
+    for (size_t y = 0; y < pixmap->height; ++y) {
+        for (size_t x = 0; x < pixmap->width; ++x) {
             putc(pixmap->data[(y * pixmap->width) + x], fp);
         }
         putc('\n', fp);
     }
 
-    return IMC_EOK;
+    fclose(fp);
+    return IMC_OK;
 }
 
 /**
@@ -355,29 +333,26 @@ ImcError_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
  * @param[in] bg_col The background color to be blended in the case that pixbuf contains alpha data
  * @returns An ImcError_t representing the exit status code
  */
-ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rgb_t bg_col) {
-    size_t x, y, bpp;
-
+ImcResult_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rgb_t bg_col) {
     Rgb_t rgb;
     Rgba_t rgba;
-    FILE *fp = NULL;
 
-    fp = fopen(fname, "wb");
+    FILE *fp = fopen(fname, "wb");
     if (fp == NULL) {
         IMC_LOG("Failed to open file for write", IMC_ERROR);
-        return IMC_EFAIL;
+        return IMC_FAIL;
     }
 
-    bpp = (size_t)powf(2.0f, pixmap->bit_depth) - 1.0f;
+    usize bpp = (size_t)powf(2.0f, pixmap->bit_depth) - 1.0f;
 
-    /* Write PPM header */
+    // Write PPM header
     fputs("P6\n", fp);
     fprintf(fp, "%ld %ld\n", pixmap->width, pixmap->height);
     fprintf(fp, "%ld\n", bpp);
 
-    /* Write PPM data */
-    for (y = 0; y < pixmap->height; ++y) {
-        for (x = 0; x < pixmap->width; ++x) {
+    // Write PPM data
+    for (usize y = 0; y < pixmap->height; ++y) {
+        for (usize x = 0; x < pixmap->width; ++x) {
             if (pixmap->n_channels == 3) {
                 rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
             } else if (pixmap->n_channels == 4) {
@@ -392,7 +367,7 @@ ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rg
     }
 
     fclose(fp);
-    return IMC_EOK;
+    return IMC_OK;
 }
 
 /**
@@ -401,12 +376,8 @@ ImcError_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rg
  * @param[in,out] pixmap The pixmap to be rotated 90 degrees clockwise
  * @returns An ImcError_t representing the exit status code of the function
  */
-ImcError_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
-    size_t x1, x2, y1, y2;
-
-    Pixmap_t tmp;
-    Rgb_t rgb;
-    Rgba_t rgba;
+ImcResult_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
+    Pixmap_t tmp = { 0 };
 
     tmp = *pixmap;
     tmp.width = pixmap->height;
@@ -414,13 +385,13 @@ ImcError_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
     tmp.data = malloc((tmp.width * imc_sizeof_px(tmp)) * tmp.height);
     if (tmp.data == NULL) {
         IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
-        return IMC_EFAULT;
+        return IMC_FAULT;
     }
 
-    for (y2 = 0; y2 < pixmap->height; ++y2) {
-        for (x2 = 0; x2 < pixmap->width; ++x2) {
-            x1 = -y2 - 1;
-            y1 = x2 + 1;
+    for (usize y2 = 0; y2 < pixmap->height; ++y2) {
+        for (usize x2 = 0; x2 < pixmap->width; ++x2) {
+            usize x1 = -y2 - 1;
+            usize y1 = x2 + 1;
 
             if ((y1 * tmp.width) + x1 >= (tmp.width * tmp.height)) {
                 continue;
@@ -439,7 +410,7 @@ ImcError_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
     free(pixmap->data);
     *pixmap = tmp;
 
-    return IMC_EOK;
+    return IMC_OK;
 }
 
 /**
@@ -448,11 +419,8 @@ ImcError_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
  * @param[in,out] pixmap The pixmap to be rotated 90 degrees counter-clockwise
  * @returns An ImcError_t representing the exit status code of the function
  */
-ImcError_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
-    Rgb_t rgb;
-    Rgba_t rgba;
+ImcResult_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
     Pixmap_t tmp;
-    size_t x1, x2, y1, y2;
 
     tmp = *pixmap;
     tmp.width = pixmap->height;
@@ -460,13 +428,13 @@ ImcError_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
     tmp.data = malloc((tmp.width * imc_sizeof_px(tmp)) * tmp.height);
     if (tmp.data == NULL) {
         IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
-        return IMC_EFAULT;
+        return IMC_FAULT;
     }
 
-    for (y2 = 0; y2 < pixmap->height; ++y2) {
-        for (x2 = 0; x2 < pixmap->width; ++x2) {
-            x1 = y2;
-            y1 = -x2 + pixmap->width - 1;
+    for (usize y2 = 0; y2 < pixmap->height; ++y2) {
+        for (usize x2 = 0; x2 < pixmap->width; ++x2) {
+            usize x1 = y2;
+            usize y1 = -x2 + pixmap->width - 1;
 
             if ((y1 * tmp.width) + x1 >= (tmp.width * tmp.height)) {
                 continue;
@@ -485,7 +453,7 @@ ImcError_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
     free(pixmap->data);
     *pixmap = tmp;
 
-    return IMC_EOK;
+    return IMC_OK;
 }
 
 /**
@@ -494,9 +462,9 @@ ImcError_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
  * @param pixmap The pixmap whos resources shall be released
  * @returns IMC_EFAULT if __pixmap__ is invalid, otherwise IMC_EOK
  */
-ImcError_t imc_pixmap_destroy(Pixmap_t *pixmap) {
+ImcResult_t imc_pixmap_destroy(Pixmap_t *pixmap) {
     if (pixmap == NULL) {
-        return IMC_EFAULT;
+        return IMC_FAULT;
     }
 
     if (pixmap->data) {
@@ -506,5 +474,5 @@ ImcError_t imc_pixmap_destroy(Pixmap_t *pixmap) {
     free(pixmap);
     pixmap = NULL;
 
-    return IMC_EOK;
+    return IMC_OK;
 }

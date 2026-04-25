@@ -1,14 +1,14 @@
 #ifndef EXIF_PARSER
 #define EXIF_PARSER
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "imc_common.h"
 
 #ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-#ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif
 
-#endif /* EXIF_PARSER */
+#endif

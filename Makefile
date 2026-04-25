@@ -1,8 +1,8 @@
-CC = gcc
+CC ?= gcc
 PROFILE ?= DEBUG
 
-CCFLAGS_DEBUG = -ggdb -O0 -fno-builtin -DDEBUG
-CCFLAGS_RELEASE = -O2
+CCFLAGS_DEBUG := -ggdb -O0 -fno-builtin -DDEBUG
+CCFLAGS_RELEASE := -O2
 
 SRC_DIR := src
 OBJ_DIR := obj
@@ -17,7 +17,7 @@ SRCS := $(wildcard $(SRC_DIR)/*.c)
 DEPS := $(wildcard $(SRC_DIR)/*.h)
 OBJS := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-CCFLAGS += $(CCFLAGS_$(PROFILE)) -I$(INC_DIR) -std=c99 -Wall -Wextra -Wformat #-Werror
+CCFLAGS += $(CCFLAGS_$(PROFILE)) -I$(INC_DIR) -std=c99 -Wall -Wextra
 LDFLAGS += -lc -lm -lz -lcheck
 
 BINS := $(BIN_DIR)/libimc.a $(BIN_DIR)/libimc.so
@@ -32,8 +32,8 @@ install: all
 
 # Pre-build actions
 prebuild:
-	mkdir -p $(OBJ_DIR)
-	mkdir -p $(BIN_DIR)
+	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(BIN_DIR)
 
 # Remove object files and binaries
 clean:

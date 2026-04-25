@@ -1,20 +1,12 @@
 #ifndef PNG_PARSER_H
 #define PNG_PARSER_H
 
-/* Required for fileno() */
-#ifndef _POSIX_SOURCE
-#define _POSIX_SOURCE
+#ifdef __cplusplus
+extern "C" {
 #endif
-
-#include <zlib.h>
-#include <sys/stat.h>
 
 #include "imc_common.h"
 #include "pixmap.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
 
 #define NONE 0
 #define PNG_MAGIC ((uint8_t[8]){ 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A })
@@ -50,37 +42,39 @@ extern "C" {
  * zTXt     Yes             None
  */
 
-/* Critical chunks */
-#define IHDR "IHDR" /* Image header */
-#define PLTE "PLTE" /* Palette */
-#define IDAT "IDAT" /* Image data */
-#define IEND "IEND" /* Image trailer */
+/*** Critical chunks ***/
 
-/* Ancillary chunks */
-#define TRNS "tRNS" /* Transparency */
-#define GAMA "gAMA" /* Image gamma */
-#define CHRM "cHRM" /* Primary chromaticities */
-#define SRGB "sRGB" /* Standard RGB color space */
-#define ICCP "iCCP" /* Embedded ICC profile */
+#define IHDR "IHDR" // Image header
+#define PLTE "PLTE" // Palette
+#define IDAT "IDAT" // Image data
+#define IEND "IEND" // Image trailer
 
-/* Textual information */
-#define TEXT "tEXt" /* Textual data */
-#define ZTXT "zTXt" /* Compressed textual data */
-#define ITXT "iTXt" /* International textual data */
+/*** Ancillary chunks ***/
 
-/* Misc information */
-#define BKGD "bKGD" /* Background color */
-#define PHYS "pHYs" /* Physical pixel dimensions */
-#define SBIT "sBIT" /* Significant bits */
-#define SPLT "sPLT" /* Suggested palette */
-#define HIST "hIST" /* Palette histogram */
-#define TIME "tIME" /* Image last-modification time */
+#define TRNS "tRNS" // Transparency
+#define GAMA "gAMA" // Image gamma
+#define CHRM "cHRM" // Primary chromaticities
+#define SRGB "sRGB" // Standard RGB color space
+#define ICCP "iCCP" // Embedded ICC profile
+
+// Textual information
+#define TEXT "tEXt" // Textual data
+#define ZTXT "zTXt" // Compressed textual data
+#define ITXT "iTXt" // International textual data
+
+// Misc information
+#define BKGD "bKGD" // Background color
+#define PHYS "pHYs" // Physical pixel dimensions
+#define SBIT "sBIT" // Significant bits
+#define SPLT "sPLT" // Suggested palette
+#define HIST "hIST" // Palette histogram
+#define TIME "tIME" // Image last-modification time
 
 typedef struct {
-    uint32_t length;    /* Length of data segment */
-    uint32_t crc;       /* Cyclic Redundancy Check */
-    uint8_t *data;      /* Chunk data (variable size) */
-    char     type[4];   /* Chunk type code */
+    u32  length;  // Length of data segment
+    u32  crc;     // Cyclic Redundancy Check
+    u8  *data;    // Chunk data (variable size)
+    char type[4]; // Chunk type code
 } Chunk_t;
 
 /**
@@ -95,20 +89,20 @@ typedef struct {
  * Truecolor + alpha   6             8, 16           Each pixel is an RGB triple followed by alpha sample
  */
 typedef enum {
-    PALETTE = 0x01,
-    COLOR   = 0x02,
-    ALPHA   = 0x04
+    PALETTE = (0x01) << 0,
+    COLOR   = (0x01) << 1,
+    ALPHA   = (0x01) << 2,
 } ColorType_t;
 
 typedef struct {
-    uint32_t width;             /* Image width (in pixels) */
-    uint32_t height;            /* Image height (in pixels) */
-    uint8_t  bit_depth;         /* Number of bits per-channel */
-    uint8_t  color_type;        /* See enum ColorType_t */
-    uint8_t  compress_mthd;     /* Compression method (currently only 0 is supported (LZ77)) */
-    uint8_t  filter_mthd;       /* Filter method (currently only 0 is supported (Adaptive filtering)) */
-    uint8_t  interlace_mthd;    /* Interlace method (0 = Non-interlaced, 1 = interlaced) */
-    uint8_t  n_channels;        /* The number of channels / samples per pixel */
+    u32 width;             // Image width (in pixels)
+    u32 height;            // Image height (in pixels)
+    u8  bit_depth;         // Number of bits per-channel
+    u8  color_type;        // See enum ColorType_t
+    u8  compress_mthd;     // Compression method (currently only 0 is supported (LZ77))
+    u8  filter_mthd;       // Filter method (currently only 0 is supported (Adaptive filtering))
+    u8  interlace_mthd;    // Interlace method (0 = Non-interlaced, 1 = interlaced)
+    u8  n_channels;        // The number of channels / samples per pixel
 } Ihdr_t;
 
 /* NOT SUPPORTED
@@ -118,9 +112,9 @@ typedef struct {
 */
 
 typedef struct {
-    uint8_t *data;     /* Compressed data stream */
-    size_t   length;   /* Length of compressed data stream */
-    size_t   offset;   /* Offset into the buffer (used when appending multiple IDAT chunks) */
+    u8   *data;     // Compressed data stream
+    usize length;   // Length of compressed data stream
+    usize offset;   // Offset into the buffer (used when appending multiple IDAT chunks)
 } Idat_t;
 
 typedef struct {
@@ -130,21 +124,21 @@ typedef struct {
 } Gama_t;
 
 typedef struct {
-    uint32_t wpoint_x;  /* White-point x */
-    uint32_t wpoint_y;  /* White-point y */
-    uint32_t red_x;     /* Red x */
-    uint32_t red_y;     /* Red y */
-    uint32_t green_x;   /* Green x */
-    uint32_t green_y;   /* Green y */
-    uint32_t blue_x;    /* Blue x */
-    uint32_t blue_y;    /* Blue y */
+    u32 wpoint_x;  // White-point x
+    u32 wpoint_y;  // White-point y
+    u32 red_x;     // Red x
+    u32 red_y;     // Red y
+    u32 green_x;   // Green x
+    u32 green_y;   // Green y
+    u32 blue_x;    // Blue x
+    u32 blue_y;    // Blue y
 } Chrm_t;
 
 typedef enum {
-    PERCEPTUAL,     /* Perceptual */
-    RELATIVE,       /* Relative colorimetric */
-    SATURATION,     /* Saturation */
-    ABSOLUTE        /* Absolute colorimetric */
+    PERCEPTUAL,     // Perceptual
+    RELATIVE,       // Relative colorimetric
+    SATURATION,     // Saturation
+    ABSOLUTE        // Absolute colorimetric
 } RenderIntent_t;
 
 typedef struct {
@@ -152,9 +146,9 @@ typedef struct {
 } Srgb_t;
 
 typedef struct {
-    char     profile_name[79];
-    uint8_t  compress_mthd;
-    uint8_t *comp_profile;
+    char profile_name[79];
+    u8   compress_mthd;
+    u8  *comp_profile;
 } Iccp_t;
 
 typedef enum {
@@ -165,27 +159,27 @@ typedef enum {
 } FilterMethod_t;
 
 typedef struct {
-    FILE    *fp;    /* The file handle */
-    uint8_t *data;  /* Copy of raw data */
-    size_t   size;  /* Size of data (in bytes) */
+    FILE *fp;    // The file handle
+    u8   *data;  // Copy of raw data
+    usize size;  // Size of data (in bytes)
 } PngHndl_t;
 
-/* Used for reconstructing filtered scanlines */
-typedef uint8_t (*recon_func)(
-    uint8_t *prev_scanline,
-    uint8_t *curr_scanline,
-    const uint8_t n_channels,
-    const size_t idx
+// Used for reconstructing filtered scanlines
+typedef uint8_t (*reconstruct_fn)(
+    u8 *prev_scanline,
+    u8 *curr_scanline,
+    const u8 n_channels,
+    const usize idx
 );
 
-/* Forward function declarations */
+// Forward function declarations
 
 PngHndl_t      *imc_png_open(const char* const path);
-ImcError_t      imc_png_close(PngHndl_t *png);
+ImcResult_t     imc_png_close(PngHndl_t *png);
 Pixmap_t       *imc_png_parse(PngHndl_t *png);
 
 #ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif
 
-#endif /* PNG_PARSER_H */
+#endif
