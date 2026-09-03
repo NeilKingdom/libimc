@@ -9,7 +9,7 @@ extern "C" {
 #include "pixmap.h"
 
 #define NONE 0
-#define PNG_MAGIC ((uint8_t[8]){ 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A })
+#define PNG_MAGIC ((u8[8]){ 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A })
 
 /**
  * =========================================================
@@ -89,9 +89,9 @@ typedef struct {
  * Truecolor + alpha   6             8, 16           Each pixel is an RGB triple followed by alpha sample
  */
 typedef enum {
-    PALETTE = (0x01) << 0,
-    COLOR   = (0x01) << 1,
-    ALPHA   = (0x01) << 2,
+    PALETTE = 0x01 << 0,
+    COLOR   = 0x01 << 1,
+    ALPHA   = 0x01 << 2,
 } ColorType_t;
 
 typedef struct {
@@ -165,7 +165,7 @@ typedef struct {
 } PngHndl_t;
 
 // Used for reconstructing filtered scanlines
-typedef uint8_t (*reconstruct_fn)(
+typedef u8 (*reconstruct_fn)(
     u8 *prev_scanline,
     u8 *curr_scanline,
     const u8 n_channels,

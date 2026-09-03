@@ -21,7 +21,7 @@ static ImcResult_t _imc_pixmap_downscale_width(
     const usize width,
     const ScaleMethod_t sm
 ) {
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 static ImcResult_t _imc_pixmap_upscale_width(
@@ -29,7 +29,7 @@ static ImcResult_t _imc_pixmap_upscale_width(
     const usize width,
     const ScaleMethod_t sm
 ) {
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 static ImcResult_t _imc_pixmap_downscale_height(
@@ -37,7 +37,7 @@ static ImcResult_t _imc_pixmap_downscale_height(
     const usize height,
     const ScaleMethod_t sm
 ) {
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 static ImcResult_t _imc_pixmap_upscale_height(
@@ -45,7 +45,7 @@ static ImcResult_t _imc_pixmap_upscale_height(
     const usize height,
     const ScaleMethod_t sm
 ) {
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /*
@@ -73,11 +73,11 @@ inline usize imc_sizeof_px(const Pixmap_t pixmap) {
  * @param[in] pixmap The pixmap that will be sampled
  * @param[in] x A normalized floating point value between 0.0f and 1.0f representing the x sampling component
  * @param[in] y A normalized floating point value between 0.0f and 1.0f representing the y sampling component
- * @returns An Rgba_t struct representing the color of the sampled pixel
+ * @returns An RGBA8_t struct representing the color of the sampled pixel
  */
-Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const f32 x, const f32 y) {
-    Rgb_t rgb = { 0 };
-    Rgba_t rgba = { 0 };
+RGBA8_t imc_pixmap_nsample(Pixmap_t *pixmap, const f32 x, const f32 y) {
+    RGB8_t rgb = { 0 };
+    RGBA8_t rgba = { 0 };
 
     f32 _x = imc_clamp(0.0f, 1.0f, x);
     if (_x != x) {
@@ -100,10 +100,10 @@ Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const f32 x, const f32 y) {
     x_intrp = x_intrp / imc_sizeof_px(*pixmap);
 
     if (pixmap->n_channels == 3) {
-        rgb = ((Rgb_t*)pixmap->data)[y_intrp + x_intrp];
-        rgba = (Rgba_t){ rgb.r, rgb.g, rgb.b, 255 };
+        rgb = ((RGB8_t*)pixmap->data)[y_intrp + x_intrp];
+        rgba = (RGBA8_t){ rgb.r, rgb.g, rgb.b, 255 };
     } else if (pixmap->n_channels == 4) {
-        rgba = ((Rgba_t*)pixmap->data)[y_intrp + x_intrp];
+        rgba = ((RGBA8_t*)pixmap->data)[y_intrp + x_intrp];
     }
 
     return rgba;
@@ -116,11 +116,11 @@ Rgba_t imc_pixmap_nsample(Pixmap_t *pixmap, const f32 x, const f32 y) {
  * @param[in] pixmap The pixmap that will be sampled
  * @param[in] x The 0-indexed x sampling component, which represents the horizontal offset into the pixmap
  * @param[in] y The 0-indexed y sampling component, which represents the vertical offset into the pixmap
- * @returns An Rgba_t struct representing the color of the sampled pixel
+ * @returns An RGBA8_t struct representing the color of the sampled pixel
  */
-Rgba_t imc_pixmap_psample(Pixmap_t *pixmap, const usize x, const usize y) {
-    Rgb_t rgb = { 0 };
-    Rgba_t rgba = { 0 };
+RGBA8_t imc_pixmap_psample(Pixmap_t *pixmap, const usize x, const usize y) {
+    RGB8_t rgb = { 0 };
+    RGBA8_t rgba = { 0 };
 
     usize _x = x;
     if (x >= pixmap->width) {
@@ -133,10 +133,10 @@ Rgba_t imc_pixmap_psample(Pixmap_t *pixmap, const usize x, const usize y) {
     }
 
     if (pixmap->n_channels == 3) {
-        rgb = ((Rgb_t*)pixmap->data)[(_y * pixmap->width) + _x];
-        rgba = (Rgba_t){ rgb.r, rgb.g, rgb.b, 255 };
+        rgb = ((RGB8_t*)pixmap->data)[(_y * pixmap->width) + _x];
+        rgba = (RGBA8_t){ rgb.r, rgb.g, rgb.b, 255 };
     } else if (pixmap->n_channels == 4) {
-        rgba = ((Rgba_t*)pixmap->data)[(_y * pixmap->width) + _x];
+        rgba = ((RGBA8_t*)pixmap->data)[(_y * pixmap->width) + _x];
     }
 
     return rgba;
@@ -161,29 +161,29 @@ ImcResult_t imc_pixmap_scale(
 
     if (width < pixmap->width) {
         result = _imc_pixmap_downscale_width(pixmap, width, sm);
-        if (result != IMC_OK) {
-            return IMC_FAIL;
+        if (result != IMC_SUCCESS) {
+            return IMC_FAILURE;
         }
     } else if (width > pixmap->width) {
         result = _imc_pixmap_upscale_width(pixmap, width, sm);
-        if (result != IMC_OK) {
-            return IMC_FAIL;
+        if (result != IMC_SUCCESS) {
+            return IMC_FAILURE;
         }
     }
 
     if (height < pixmap->height) {
         result = _imc_pixmap_downscale_height(pixmap, height, sm);
-        if (result != IMC_OK) {
-            return IMC_FAIL;
+        if (result != IMC_SUCCESS) {
+            return IMC_FAILURE;
         }
     } else if (height > pixmap->height) {
         result = _imc_pixmap_upscale_height(pixmap, height, sm);
-        if (result != IMC_OK) {
-            return IMC_FAIL;
+        if (result != IMC_SUCCESS) {
+            return IMC_FAILURE;
         }
     }
 
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -194,8 +194,8 @@ ImcResult_t imc_pixmap_scale(
  */
 ImcResult_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
     Pixmap_t tmp;
-    Rgb_t rgb;
-    Rgba_t rgba;
+    RGB8_t rgb;
+    RGBA8_t rgba;
 
     // Weights used to calculate alpha
     const f32 r_weight = 0.3f;
@@ -208,7 +208,7 @@ ImcResult_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
         tmp.width /= tmp.n_channels;
         tmp.n_channels = 4;
         tmp.width *= tmp.n_channels;
-        tmp.data = malloc(tmp.width * tmp.height * sizeof(Rgba_t));
+        tmp.data = malloc(tmp.width * tmp.height * sizeof(RGBA8_t));
         if (tmp.data == NULL) {
             IMC_LOG("Failed to allocate memory for temporary pixmap buffer", IMC_ERROR);
             return IMC_FAULT;
@@ -218,22 +218,22 @@ ImcResult_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
     for (usize y = 0; y < tmp.height; ++y) {
         for (usize x = 0; x < pixmap->width; ++x) {
             if (pixmap->n_channels == 3) {
-                rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
-                rgba = (Rgba_t){ rgb.r, rgb.g, rgb.b, 255 };
+                rgb = ((RGB8_t*)pixmap->data)[(y * pixmap->width) + x];
+                rgba = (RGBA8_t){ rgb.r, rgb.g, rgb.b, 255 };
             } else if (pixmap->n_channels == 4) {
-                rgba = ((Rgba_t*)pixmap->data)[(y * pixmap->width) + x];
+                rgba = ((RGBA8_t*)pixmap->data)[(y * pixmap->width) + x];
             }
 
             uint8_t a = 255 - ((r_weight * rgba.r) + (g_weight * rgba.g) + (b_weight * rgba.b));
-            rgba = (Rgba_t){ 0.0f, 0.0f, 0.0f, a };
-            ((Rgba_t*)tmp.data)[tmp.offset++] = rgba;
+            rgba = (RGBA8_t){ 0.0f, 0.0f, 0.0f, a };
+            ((RGBA8_t*)tmp.data)[tmp.offset++] = rgba;
         }
     }
 
     free(pixmap->data);
     *pixmap = tmp;
 
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -244,7 +244,7 @@ ImcResult_t imc_pixmap_to_grayscale(Pixmap_t *pixmap) {
  * @returns An ImcError_t representing the exit status code
  */
 ImcResult_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshold) {
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -262,8 +262,8 @@ ImcResult_t imc_pixmap_to_monochrome(Pixmap_t *pixmap, const float luma_threshol
  * @returns An ImcError_t representing the exit status code
  */
 ImcResult_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
-    Rgb_t rgb = { 0 };
-    Rgba_t rgba = { 0 };
+    RGB8_t rgb = { 0 };
+    RGBA8_t rgba = { 0 };
     Pixmap_t tmp = { 0 };
 
     // Weights used to calculate perceived luma
@@ -286,7 +286,7 @@ ImcResult_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
             f32 luma;
 
             if (pixmap->n_channels == 3) {
-                rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
+                rgb = ((RGB8_t*)pixmap->data)[(y * pixmap->width) + x];
                 f32 r_norm = (f32)rgb.r / 255.0f;
                 f32 g_norm = (f32)rgb.g / 255.0f;
                 f32 b_norm = (f32)rgb.b / 255.0f;
@@ -294,7 +294,7 @@ ImcResult_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
                 luma = (r_weight * r_norm) + (g_weight * g_norm) + (b_weight * b_norm);
                 luma_idx = roundf(luma * 10) - 1;
             } else if (pixmap->n_channels == 4) {
-                rgba = ((Rgba_t*)pixmap->data)[(y * pixmap->width) + x];
+                rgba = ((RGBA8_t*)pixmap->data)[(y * pixmap->width) + x];
 
                 luma = ((float)rgba.a / 255.0f) + c;
                 luma_idx = 10 - (roundf(luma * 10) - 1);
@@ -311,7 +311,7 @@ ImcResult_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     FILE *fp = fopen(fname, "wb");
     if (fp == NULL) {
         IMC_LOG("Failed to open file for write", IMC_ERROR);
-        return IMC_FAIL;
+        return IMC_FAILURE;
     }
 
     for (size_t y = 0; y < pixmap->height; ++y) {
@@ -322,7 +322,7 @@ ImcResult_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
     }
 
     fclose(fp);
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -333,14 +333,14 @@ ImcResult_t imc_pixmap_to_ascii(Pixmap_t *pixmap, const char* const fname) {
  * @param[in] bg_col The background color to be blended in the case that pixbuf contains alpha data
  * @returns An ImcError_t representing the exit status code
  */
-ImcResult_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const Rgb_t bg_col) {
-    Rgb_t rgb;
-    Rgba_t rgba;
+ImcResult_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const RGB8_t bg_col) {
+    RGB8_t rgb;
+    RGBA8_t rgba;
 
     FILE *fp = fopen(fname, "wb");
     if (fp == NULL) {
         IMC_LOG("Failed to open file for write", IMC_ERROR);
-        return IMC_FAIL;
+        return IMC_FAILURE;
     }
 
     usize bpp = (size_t)powf(2.0f, pixmap->bit_depth) - 1.0f;
@@ -354,10 +354,10 @@ ImcResult_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const R
     for (usize y = 0; y < pixmap->height; ++y) {
         for (usize x = 0; x < pixmap->width; ++x) {
             if (pixmap->n_channels == 3) {
-                rgb = ((Rgb_t*)pixmap->data)[(y * pixmap->width) + x];
+                rgb = ((RGB8_t*)pixmap->data)[(y * pixmap->width) + x];
             } else if (pixmap->n_channels == 4) {
-                rgba = ((Rgba_t*)pixmap->data)[(y * pixmap->width) + x];
-                rgb = imc_blend_alpha((Rgb_t){ rgba.r, rgba.g, rgba.b }, bg_col, rgba.a);
+                rgba = ((RGBA8_t*)pixmap->data)[(y * pixmap->width) + x];
+                rgb = imc_blend_alpha((RGB8_t){ rgba.r, rgba.g, rgba.b }, bg_col, rgba.a);
             }
 
             fputc(rgb.r, fp);
@@ -367,7 +367,7 @@ ImcResult_t imc_pixmap_to_ppm(Pixmap_t *pixmap, const char* const fname, const R
     }
 
     fclose(fp);
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -398,11 +398,11 @@ ImcResult_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
             }
 
             if (tmp.n_channels == 3) {
-                ((Rgb_t*)tmp.data)[(y1 * tmp.width) + x1]
-                    = ((Rgb_t*)pixmap->data)[(y2 * pixmap->width) + x2];
+                ((RGB8_t*)tmp.data)[(y1 * tmp.width) + x1]
+                    = ((RGB8_t*)pixmap->data)[(y2 * pixmap->width) + x2];
             } else if (tmp.n_channels == 4) {
-                ((Rgba_t*)tmp.data)[(y1 * tmp.width) + x1]
-                    = ((Rgba_t*)pixmap->data)[(y2 * pixmap->width) + x2];
+                ((RGBA8_t*)tmp.data)[(y1 * tmp.width) + x1]
+                    = ((RGBA8_t*)pixmap->data)[(y2 * pixmap->width) + x2];
             }
         }
     }
@@ -410,7 +410,7 @@ ImcResult_t imc_pixmap_rotate_cw(Pixmap_t *pixmap) {
     free(pixmap->data);
     *pixmap = tmp;
 
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -441,11 +441,11 @@ ImcResult_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
             }
 
             if (tmp.n_channels == 3) {
-                ((Rgb_t*)tmp.data)[(y1 * tmp.width) + x1]
-                    = ((Rgb_t*)pixmap->data)[(y2 * pixmap->width) + x2];
+                ((RGB8_t*)tmp.data)[(y1 * tmp.width) + x1]
+                    = ((RGB8_t*)pixmap->data)[(y2 * pixmap->width) + x2];
             } else if (tmp.n_channels == 4) {
-                ((Rgba_t*)tmp.data)[(y1 * tmp.width) + x1]
-                    = ((Rgba_t*)pixmap->data)[(y2 * pixmap->width) + x2];
+                ((RGBA8_t*)tmp.data)[(y1 * tmp.width) + x1]
+                    = ((RGBA8_t*)pixmap->data)[(y2 * pixmap->width) + x2];
             }
         }
     }
@@ -453,7 +453,7 @@ ImcResult_t imc_pixmap_rotate_ccw(Pixmap_t *pixmap) {
     free(pixmap->data);
     *pixmap = tmp;
 
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -474,5 +474,5 @@ ImcResult_t imc_pixmap_destroy(Pixmap_t *pixmap) {
     free(pixmap);
     pixmap = NULL;
 
-    return IMC_OK;
+    return IMC_SUCCESS;
 }

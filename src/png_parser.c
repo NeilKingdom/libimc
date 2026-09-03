@@ -55,11 +55,11 @@ static ImcResult_t _imc_validate_png_ihdr(const PngHndl_t* const png) {
     int result = memcmp((void*)png->data, (void*)PNG_MAGIC, sizeof(PNG_MAGIC));
     if (result != 0) {
         IMC_LOG("Not a PNG file", IMC_ERROR);
-        return IMC_FAIL;
+        return IMC_FAILURE;
     }
 
     fseek(png->fp, sizeof(PNG_MAGIC), SEEK_SET);
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -244,7 +244,7 @@ static ImcResult_t _imc_read_chunk(const PngHndl_t* const png, Chunk_t *chunk) {
     fread((void*)&chunk->type, sizeof(chunk->type), 1, png->fp);
     // Check if at IEND
     if (memcmp((void*)chunk->type, IEND, sizeof(chunk->type)) == 0) {
-        return IMC_FAIL; // TODO: Not the best error to return...
+        return IMC_FAILURE; // TODO: Not the best error to return...
     }
 
     /*** Chunk data ***/
@@ -265,7 +265,7 @@ static ImcResult_t _imc_read_chunk(const PngHndl_t* const png, Chunk_t *chunk) {
     fread((void*)&chunk->crc, sizeof(chunk->crc), 1, png->fp);
     chunk->crc = htonl(chunk->crc);
 
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -282,7 +282,7 @@ static ImcResult_t _imc_destroy_chunk_data(Chunk_t *chunk) {
 
     free(chunk->data);
     chunk->data = NULL;
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -390,7 +390,7 @@ static ImcResult_t _imc_append_idat(const Chunk_t* const chunk, Idat_t *idat) {
     memcpy((void*)(idat->data + idat->offset), (void*)chunk->data, chunk->length);
     idat->offset = idat->length;
 
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /**
@@ -431,7 +431,7 @@ static ImcResult_t _imc_decompress_idat(
         IMC_LOG("Failed to initialize decompression stream", IMC_ERROR);
         free(*decomp_buf);
         *decomp_buf = NULL;
-        return IMC_FAIL;
+        return IMC_FAILURE;
     }
 
     stream.avail_in = idat->length;
@@ -463,7 +463,7 @@ static ImcResult_t _imc_decompress_idat(
 
     // Cleanup
     (void)inflateEnd(&stream);
-    return (result == Z_STREAM_END) ? IMC_OK : IMC_FAIL;
+    return (result == Z_STREAM_END) ? IMC_SUCCESS : IMC_FAILURE;
 }
 
 /**
@@ -532,7 +532,7 @@ static ImcResult_t _imc_reconstruct_idat(
     }
 
     pixmap->offset = 0;
-    return IMC_OK;
+    return IMC_SUCCESS;
 }
 
 /*
@@ -637,7 +637,7 @@ PngHndl_t *imc_png_open(const char* const path) {
     }
 
     fread(png->data, png->size, 1, png->fp);
-    if (_imc_validate_png_ihdr(png) != IMC_OK) {
+    if (_imc_validate_png_ihdr(png) != IMC_SUCCESS) {
         return NULL;
     }
 
@@ -722,5 +722,5 @@ ImcResult_t imc_png_close(PngHndl_t *png) {
     free(png);
     png = NULL;
 
-    return IMC_OK;
+    return IMC_SUCCESS;
 }

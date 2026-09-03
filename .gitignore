@@ -1,5 +1,6 @@
-bin
-obj
-test
-compile_commands.json
 .cache
+compile_commands.json
+build
+test/*
+!test/build.sh
+!test/test.c

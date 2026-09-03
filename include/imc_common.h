@@ -23,31 +23,15 @@ extern "C" {
 #include <sys/stat.h>
 #include <arpa/inet.h>
 
-typedef uint8_t  u8;
-typedef int8_t   i8;
-typedef uint16_t u16;
-typedef int16_t  i16;
-typedef uint32_t u32;
-typedef int32_t  i32;
-typedef uint64_t u64;
-typedef int64_t  i64;
-typedef float    f32;
-typedef double   f64;
-typedef size_t   usize;
-typedef ssize_t  isize;
+#include "ezc.h"
 
 typedef struct {
-    u8 r;
-    u8 g;
-    u8 b;
-} Rgb_t;
+    u8 r, g, b;
+} RGB8_t;
 
 typedef struct {
-    u8 r;
-    u8 g;
-    u8 b;
-    u8 a;
-} Rgba_t;
+    u8 r, g, b, a;
+} RGBA8_t;
 
 typedef enum {
     RGB  = 3,
@@ -55,13 +39,13 @@ typedef enum {
 } PixFormat_t;
 
 typedef enum {
-    IMC_FAIL     = -1,           // General purpose error
-    IMC_OK       =  0,           // Success
-    IMC_NOMEM    =  ENOMEM,      // Not enough memory
-    IMC_FAULT    =  EFAULT,      // Bad address
-    IMC_INVAL    =  EINVAL,      // The argument was invalid
-    IMC_NODATA   =  ENODATA,     // No data available
-    IMC_OVERFLOW =  EOVERFLOW,   // Value too large to be stored in data type
+    IMC_FAILURE  = -1,         // General purpose error
+    IMC_SUCCESS  =  0,         // Success
+    IMC_NOMEM    =  ENOMEM,    // Not enough memory
+    IMC_FAULT    =  EFAULT,    // Bad address
+    IMC_INVAL    =  EINVAL,    // The argument was invalid
+    IMC_NODATA   =  ENODATA,   // No data available
+    IMC_OVERFLOW =  EOVERFLOW, // Value too large to be stored in data type
 } ImcResult_t;
 
 typedef enum {
@@ -69,14 +53,6 @@ typedef enum {
     IMC_WARN,
     IMC_ERROR
 } ImcLogLevel_t;
-
-static inline float imc_lerp(const f32 a, const f32 b, const f32 t) {
-    return a * (1.0 - t) + (b * t);
-}
-
-static inline float imc_clamp(const f32 min, const f32 max, const f32 x) {
-    return (x < min) ? min : ((x > max) ? max : x);
-}
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -89,7 +65,7 @@ static inline float imc_clamp(const f32 min, const f32 max, const f32 x) {
 static void _imc_log(
     const char *file,
     const char *func,
-    const int line,
+    const i32 line,
     const char *msg,
     const ImcLogLevel_t level
 ) {

@@ -1,62 +1,63 @@
-CC ?= gcc
+CC := gcc
 PROFILE ?= DEBUG
 
-CCFLAGS_DEBUG := -ggdb -O0 -fno-builtin -DDEBUG
-CCFLAGS_RELEASE := -O2
+CFLAGS_DEBUG := -ggdb -O0 -fno-builtin -DDEBUG
+CFLAGS_RELEASE := -O2
 
 SRC_DIR := src
-OBJ_DIR := obj
 INC_DIR := include
-BIN_DIR := bin
-TEST_DIR := test
+TGT_DIR := build
+OBJ_DIR := $(TGT_DIR)/obj
 
-TGT_INC_DIR := /usr/include/
-TGT_BIN_DIR := /usr/lib/
+TGT_INC_DIR := /usr/include/imc
+TGT_LIB_DIR := /usr/lib/imc
 
 SRCS := $(wildcard $(SRC_DIR)/*.c)
-DEPS := $(wildcard $(SRC_DIR)/*.h)
 OBJS := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-CCFLAGS += $(CCFLAGS_$(PROFILE)) -I$(INC_DIR) -std=c99 -Wall -Wextra
-LDFLAGS += -lc -lm -lz -lcheck
+CPPFLAGS += -I$(INC_DIR) -Ilib/ezc/include
+CFLAGS += $(CFLAGS_$(PROFILE)) -std=c99 -Wall -Wextra -fPIC
+LDLIBS += -lm -lz
 
-BINS := $(BIN_DIR)/libimc.a $(BIN_DIR)/libimc.so
+LIBS := $(TGT_DIR)/libimc.a $(TGT_DIR)/libimc.so
 
-# Create static and dynamic libraries
-all: prebuild $(BINS)
-
-# Copy libraries to /usr/lib
-install: all
-	cp $(BINS) $(TGT_BIN_DIR)
-	cp $(INC_DIR)/*.h $(TGT_INC_DIR)
-
-# Pre-build actions
-prebuild:
-	@mkdir -p $(OBJ_DIR)
-	@mkdir -p $(BIN_DIR)
+# Default goal
+all: $(LIBS)
 
 # Remove object files and binaries
 clean:
-	rm -f $(OBJ_DIR)/*.o $(BIN_DIR)/*
+	rm -rf $(TGT_DIR)/*
 
-# Rebuild project
+# Clean -> build
 rebuild: clean all
 
-# Create static library
-$(BIN_DIR)/libimc.a: $(OBJS)
+# Add headers/libraries to TGT_INC_DIR + TGT_LIB_DIR
+install: all
+	install -d $(TGT_INC_DIR)
+	install -d $(TGT_LIB_DIR)
+	install -m644 $(INC_DIR)/*.h $(TGT_INC_DIR)
+	install -m644 $(TGT_DIR)/libimc.a $(TGT_LIB_DIR)
+	install -m755 $(TGT_DIR)/libimc.so $(TGT_LIB_DIR)
+
+# Remove installed headers/libraries
+uninstall:
+	rm -rf $(TGT_INC_DIR)
+	rm -rf $(TGT_LIB_DIR)
+
+# Compile static library
+$(TGT_DIR)/libimc.a: $(OBJS)
 	ar rcs $@ $^
 
-# Create dynamic library
-$(BIN_DIR)/libimc.so: $(SRCS) $(DEPS)
-	$(CC) -o $@ $(SRCS) $(DEPS) -shared -fPIC $(CCFLAGS) $(LDFLAGS)
-	#strip ./bin/libimc.so
+# Compile dynamic library
+$(TGT_DIR)/libimc.so: $(OBJS)
+	$(CC) -shared -o $@ $^ $(LDLIBS)
 
 # Create objects
-$(OBJ_DIR)/%.o: $(SRCS)
-	$(CC) $< -c -o $@ $(CCFLAGS)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-# TODO: Modify test to include all tests
-test: install
-	$(CC) $(TEST_DIR)/test.c -o $(BIN_DIR)/test $(CCFLAGS) $(LDFLAGS) -limc
+# Create obj dir (and in turn build dir) if they don't exist
+$(OBJ_DIR):
+	mkdir -p $@
 
-.PHONY: all install clean rebuild test
+.PHONY: all clean rebuild install uninstall
