@@ -1,13 +1,10 @@
 CC := gcc
 PROFILE ?= DEBUG
 
-CFLAGS_DEBUG := -ggdb -O0 -fno-builtin -DDEBUG
-CFLAGS_RELEASE := -O2
-
 SRC_DIR := src
 INC_DIR := include
-TGT_DIR := build
-OBJ_DIR := $(TGT_DIR)/obj
+OBJ_DIR := build/obj
+TGT_DIR := build/target
 
 TGT_INC_DIR := /usr/include/imc
 TGT_LIB_DIR := /usr/lib/imc
@@ -15,21 +12,30 @@ TGT_LIB_DIR := /usr/lib/imc
 SRCS := $(wildcard $(SRC_DIR)/*.c)
 OBJS := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-CPPFLAGS += -I$(INC_DIR) -Ilib/ezc/include
+CFLAGS_DEBUG := -ggdb -O0 -fno-builtin -DDEBUG
+CFLAGS_RELEASE := -O2
+
+INCLUDES += -I$(INC_DIR) -Ilib/ezc/include
 CFLAGS += $(CFLAGS_$(PROFILE)) -std=c99 -Wall -Wextra -fPIC
-LDLIBS += -lm -lz
+LDFLAGS += -lm -lz
 
 LIBS := $(TGT_DIR)/libimc.a $(TGT_DIR)/libimc.so
 
 # Default goal
 all: $(LIBS)
 
-# Remove object files and binaries
+# Clean obj files and libs
 clean:
+	rm -rf $(OBJ_DIR)/*
 	rm -rf $(TGT_DIR)/*
 
 # Clean -> build
 rebuild: clean all
+
+# Create dependent build directories
+prebuild:
+	mkdir -p $(OBJ_DIR)
+	mkdir -p $(TGT_DIR)
 
 # Add headers/libraries to TGT_INC_DIR + TGT_LIB_DIR
 install: all
@@ -50,14 +56,10 @@ $(TGT_DIR)/libimc.a: $(OBJS)
 
 # Compile dynamic library
 $(TGT_DIR)/libimc.so: $(OBJS)
-	$(CC) -shared -o $@ $^ $(LDLIBS)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
-# Create objects
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+# Intermediate obj files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | prebuild
+	$(CC) $(INCLUDES) $(CFLAGS) -c $< -o $@
 
-# Create obj dir (and in turn build dir) if they don't exist
-$(OBJ_DIR):
-	mkdir -p $@
-
-.PHONY: all clean rebuild install uninstall
+.PHONY: all clean rebuild prebuild install uninstall
